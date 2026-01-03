@@ -37,4 +37,10 @@
     </None>
   </ItemGroup>
 
+  <!-- Build frontend during publish -->
+  <Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release' OR '$(ASPNETCORE_ENVIRONMENT)' == 'Production'">
+    <Exec Command="npm install" WorkingDirectory="$(SpaRoot)" />
+    <Exec Command="npm run build" WorkingDirectory="$(SpaRoot)" />
+  </Target>
+
 </Project>
