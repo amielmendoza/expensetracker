@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════════════════════
+  QUICK SETUP: Connect Localhost to Supabase
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Get Your Database Password
+───────────────────────────────────
+1. Go to: https://app.supabase.com/project/gmvrkjwugeozurbjdpzy/settings/database
+2. Scroll to "Connection string" section
+3. Select "URI" format
+4. The password is between "postgres:" and "@" in the connection string
+   
+   OR if you can't see it:
+   
+5. Scroll to "Database Password" section
+6. Click "Reset Database Password" to get a new one
+7. Copy the password immediately (it won't be shown again!)
+
+See HOW_TO_GET_PASSWORD.md for detailed instructions.
+
+STEP 2: Update appsettings.Development.json
+───────────────────────────────────────────
+Open: ExpenseTracker.Server/appsettings.Development.json
+
+Find this line:
+  "DefaultConnection": "postgresql://postgres:[YOUR-PASSWORD]@db.gmvrkjwugeozurbjdpzy.supabase.co:5432/postgres?sslmode=require"
+
+Replace [YOUR-PASSWORD] with your actual database password
+
+Example (DO NOT USE - use your actual password):
+  "DefaultConnection": "postgresql://postgres:myPassword123@db.gmvrkjwugeozurbjdpzy.supabase.co:5432/postgres?sslmode=require"
+
+STEP 3: Test the Connection
+────────────────────────────
+1. Run: dotnet run (from ExpenseTracker.Server folder)
+2. Check console for: "Database created successfully"
+3. Test API: https://localhost:7242/api/categories
+
+═══════════════════════════════════════════════════════════════════
+  SECURITY TIP: Use .NET User Secrets Instead
+═══════════════════════════════════════════════════════════════════
+
+Better approach (keeps password out of files):
+
+1. Remove connection string from appsettings.Development.json
+2. Run these commands:
+
+   dotnet user-secrets init
+   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "postgresql://postgres:YOUR-PASSWORD@db.gmvrkjwugeozurbjdpzy.supabase.co:5432/postgres?sslmode=require"
+   dotnet user-secrets set "Database:Provider" "postgresql"
+
+See LOCAL_SETUP.md for detailed instructions.
+
+═══════════════════════════════════════════════════════════════════
+

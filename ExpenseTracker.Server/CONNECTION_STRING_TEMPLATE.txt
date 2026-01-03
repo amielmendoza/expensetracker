@@ -1,0 +1,19 @@
+# Your Supabase Connection String Template
+
+## For Azure App Service Configuration
+
+Setting Name: ConnectionStrings__DefaultConnection
+
+Value (replace [YOUR-PASSWORD] with your actual database password):
+postgresql://postgres:[YOUR-PASSWORD]@db.gmvrkjwugeozurbjdpzy.supabase.co:5432/postgres?sslmode=require
+
+## Example (DO NOT USE THIS - Replace with your actual password)
+postgresql://postgres:your-actual-password-here@db.gmvrkjwugeozurbjdpzy.supabase.co:5432/postgres?sslmode=require
+
+## Notes
+- Replace [YOUR-PASSWORD] with your database password from Supabase Dashboard
+- The ?sslmode=require ensures secure SSL connection
+- Never commit your actual password to source control
+- Use Azure App Settings to store this securely in production
+
+
