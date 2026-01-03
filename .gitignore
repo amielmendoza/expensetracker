@@ -214,4 +214,7 @@ ExpenseTracker.Server/appsettings.Development.json
 # Claude Code
 .claude/
 
+# Frontend build output (generated during build)
+ExpenseTracker.Server/wwwroot/
+
 
