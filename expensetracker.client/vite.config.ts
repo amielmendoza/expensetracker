@@ -45,6 +45,10 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    build: {
+        outDir: '../ExpenseTracker.Server/wwwroot',
+        emptyOutDir: true,
+    },
     server: {
         proxy: {
             '^/api': {
