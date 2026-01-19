@@ -20,3 +20,5 @@ ORDER BY table_name;
 -- - Categories = might be stored as lowercase depending on how it was created
 
 
+
+

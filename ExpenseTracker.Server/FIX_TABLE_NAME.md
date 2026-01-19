@@ -49,3 +49,5 @@ Then use: `entity.ToTable("categories");`
 If the table doesn't exist, create it using migrations or the Supabase table editor with the name `categories` (lowercase).
 
 
+
+

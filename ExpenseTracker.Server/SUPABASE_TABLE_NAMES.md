@@ -64,3 +64,5 @@ ALTER TABLE "RecurringExpenses" RENAME TO recurringexpenses;
 Then the current code configuration will work.
 
 
+
+

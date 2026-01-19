@@ -17,3 +17,5 @@ postgresql://postgres:your-actual-password-here@db.gmvrkjwugeozurbjdpzy.supabase
 - Use Azure App Settings to store this securely in production
 
 
+
+

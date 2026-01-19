@@ -16,25 +16,72 @@
         <p>No expenses found. Add your first expense to get started!</p>
         <button @click="openAddModal" class="btn-primary" style="margin-top: 1rem;">+ Add Your First Expense</button>
       </div>
-      <div v-else class="expenses-list">
-        <div
-          v-for="expense in expenses"
-          :key="expense.id"
-          class="expense-card"
-        >
-          <div class="expense-icon" :style="{ backgroundColor: expense.categoryColor }">
-            {{ expense.categoryIcon }}
+      <div v-else class="expenses-sections">
+        <!-- Recurring Expenses -->
+        <div class="expense-section">
+          <h2 class="section-title">
+            <span class="section-icon">🔄</span>
+            Monthly Recurring
+            <span class="section-count">{{ recurringExpenses.length }}</span>
+          </h2>
+          <div v-if="recurringExpenses.length === 0" class="empty-section">
+            No recurring expenses
           </div>
-          <div class="expense-details">
-            <div class="expense-description">{{ expense.description }}</div>
-            <div class="expense-meta">
-              {{ formatDate(expense.date) }} • {{ expense.categoryName }}
+          <div v-else class="expenses-list">
+            <div
+              v-for="expense in recurringExpenses"
+              :key="expense.id"
+              class="expense-card"
+            >
+              <div class="expense-icon" :style="{ backgroundColor: expense.categoryColor }">
+                {{ expense.categoryIcon }}
+              </div>
+              <div class="expense-details">
+                <div class="expense-description">{{ expense.description }}</div>
+                <div class="expense-meta">
+                  {{ formatDate(expense.date) }} • {{ expense.categoryName }}
+                </div>
+              </div>
+              <div class="expense-amount">{{ formatCurrency(expense.amount) }}</div>
+              <div class="expense-actions">
+                <button @click="editExpense(expense)" class="btn-icon">✏️</button>
+                <button @click="deleteExpense(expense.id)" class="btn-icon">🗑️</button>
+              </div>
             </div>
           </div>
-          <div class="expense-amount">{{ formatCurrency(expense.amount) }}</div>
-          <div class="expense-actions">
-            <button @click="editExpense(expense)" class="btn-icon">✏️</button>
-            <button @click="deleteExpense(expense.id)" class="btn-icon">🗑️</button>
+        </div>
+
+        <!-- One-time Expenses -->
+        <div class="expense-section">
+          <h2 class="section-title">
+            <span class="section-icon">📝</span>
+            One-time Expenses
+            <span class="section-count">{{ oneTimeExpenses.length }}</span>
+          </h2>
+          <div v-if="oneTimeExpenses.length === 0" class="empty-section">
+            No one-time expenses
+          </div>
+          <div v-else class="expenses-list">
+            <div
+              v-for="expense in oneTimeExpenses"
+              :key="expense.id"
+              class="expense-card"
+            >
+              <div class="expense-icon" :style="{ backgroundColor: expense.categoryColor }">
+                {{ expense.categoryIcon }}
+              </div>
+              <div class="expense-details">
+                <div class="expense-description">{{ expense.description }}</div>
+                <div class="expense-meta">
+                  {{ formatDate(expense.date) }} • {{ expense.categoryName }}
+                </div>
+              </div>
+              <div class="expense-amount">{{ formatCurrency(expense.amount) }}</div>
+              <div class="expense-actions">
+                <button @click="editExpense(expense)" class="btn-icon">✏️</button>
+                <button @click="deleteExpense(expense.id)" class="btn-icon">🗑️</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -64,7 +111,7 @@
             <select v-model="expenseForm.categoryId" required>
               <option value="">Select a category</option>
               <option
-                v-for="category in categories"
+                v-for="category in expenseCategories"
                 :key="category.id"
                 :value="category.id"
               >
@@ -89,6 +136,12 @@
             <label>Notes</label>
             <textarea v-model="expenseForm.notes" rows="3"></textarea>
           </div>
+          <div class="form-group">
+            <label class="checkbox-wrapper">
+              <input type="checkbox" v-model="expenseForm.isMonthlyRecurring" />
+              Monthly Recurring
+            </label>
+          </div>
           <div class="form-actions">
             <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
             <button type="submit" class="btn-primary">Save</button>
@@ -100,14 +153,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { formatCurrency } from '@/utils/currencyUtils';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import type { Expense } from '@/types';
-import { PaymentMethod } from '@/types';
+import { PaymentMethod, CategoryType } from '@/types';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
@@ -115,8 +168,20 @@ const categoryStore = useCategoryStore();
 const { expenses, loading, error } = storeToRefs(expenseStore);
 const { fetchAll, create, update, remove } = expenseStore;
 
+const recurringExpenses = computed(() =>
+  expenses.value?.filter(e => e.isMonthlyRecurring) || []
+);
+
+const oneTimeExpenses = computed(() =>
+  expenses.value?.filter(e => !e.isMonthlyRecurring) || []
+);
+
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
+
+const expenseCategories = computed(() =>
+  categories.value?.filter(c => c.type === CategoryType.Expense || c.type === CategoryType.Both) || []
+);
 
 const showAddModal = ref(false);
 const editingExpense = ref<Expense | null>(null);
@@ -129,6 +194,7 @@ const expenseForm = reactive({
   paymentMethod: PaymentMethod.Cash,
   tags: [] as string[],
   notes: '',
+  isMonthlyRecurring: false,
 });
 
 async function retryLoad() {
@@ -152,6 +218,7 @@ function editExpense(expense: Expense) {
   expenseForm.paymentMethod = expense.paymentMethod;
   expenseForm.tags = expense.tags;
   expenseForm.notes = expense.notes || '';
+  expenseForm.isMonthlyRecurring = expense.isMonthlyRecurring;
 }
 
 function openAddModal() {
@@ -172,6 +239,7 @@ function resetForm() {
   expenseForm.paymentMethod = PaymentMethod.Cash;
   expenseForm.tags = [];
   expenseForm.notes = '';
+  expenseForm.isMonthlyRecurring = false;
 }
 
 async function saveExpense() {
@@ -486,6 +554,69 @@ async function deleteExpense(id: string) {
 .btn-secondary:hover {
   background: var(--bg-secondary);
   border-color: var(--text-secondary);
+}
+
+.checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.expenses-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.expense-section {
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.section-icon {
+  font-size: 1.25rem;
+}
+
+.section-count {
+  margin-left: auto;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+.empty-section {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.95rem;
 }
 </style>
 

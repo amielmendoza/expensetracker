@@ -20,3 +20,5 @@ AND table_name IN ('Categories', 'categories', '"Categories"');
 -- If you see the table, note the exact name and we'll update the code accordingly
 
 
+
+

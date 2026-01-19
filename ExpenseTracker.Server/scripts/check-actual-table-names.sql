@@ -32,3 +32,5 @@ ORDER BY table_name;
 -- SELECT * FROM expenses LIMIT 1;    -- If this works, table is expenses (lowercase)
 
 
+
+

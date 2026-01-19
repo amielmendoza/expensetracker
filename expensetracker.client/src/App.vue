@@ -6,6 +6,8 @@
         <div class="nav-links">
           <router-link to="/" class="nav-link" exact-active-class="router-link-exact-active">Dashboard</router-link>
           <router-link to="/expenses" class="nav-link" exact-active-class="router-link-exact-active">Expenses</router-link>
+          <router-link to="/income" class="nav-link" exact-active-class="router-link-exact-active">Income</router-link>
+          <router-link to="/savings-goals" class="nav-link" exact-active-class="router-link-exact-active">Savings Goals</router-link>
           <router-link to="/categories" class="nav-link" exact-active-class="router-link-exact-active">Categories</router-link>
         </div>
       </div>

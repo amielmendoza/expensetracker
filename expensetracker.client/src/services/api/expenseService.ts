@@ -17,6 +17,7 @@ const transformExpenseRow = (row: any): Expense => {
     notes: row.notes || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    isMonthlyRecurring: row.is_monthly_recurring || false,
   };
 };
 
@@ -127,6 +128,7 @@ export const expenseService = {
         payment_method: expense.paymentMethod,
         tags: expense.tags,
         notes: expense.notes,
+        is_monthly_recurring: expense.isMonthlyRecurring || false,
       })
       .select('*, Categories(name, icon, color)')
       .single();
@@ -150,6 +152,7 @@ export const expenseService = {
         payment_method: expense.paymentMethod,
         tags: expense.tags,
         notes: expense.notes,
+        is_monthly_recurring: expense.isMonthlyRecurring || false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

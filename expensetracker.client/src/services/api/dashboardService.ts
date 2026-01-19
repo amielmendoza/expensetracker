@@ -17,6 +17,7 @@ const transformExpenseRow = (row: any): Expense => {
     notes: row.notes || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    isMonthlyRecurring: row.is_monthly_recurring || false,
   };
 };
 
@@ -72,6 +73,10 @@ export const dashboardService = {
     const thisMonthTotal = monthExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
     const thisMonthAverage = monthExpenses?.length ? thisMonthTotal / now.getDate() : 0;
 
+    // Calculate recurring vs non-recurring totals
+    const recurringTotal = monthExpenses?.reduce((sum, e) => sum + (e.is_monthly_recurring ? e.amount : 0), 0) || 0;
+    const nonRecurringTotal = thisMonthTotal - recurringTotal;
+
     // Calculate top categories
     const categoryMap = new Map<string, CategorySpending>();
     monthExpenses?.forEach((expense: any) => {
@@ -114,6 +119,64 @@ export const dashboardService = {
 
     const recentExpenses = (recentExpensesData || []).map(transformExpenseRow);
 
+    // Fetch today's income
+    const { data: todayIncomes, error: todayIncomeError } = await supabase
+      .from('Incomes')
+      .select('amount')
+      .eq('date', today);
+
+    if (todayIncomeError) {
+      console.error('Error fetching today\'s incomes:', todayIncomeError);
+    }
+
+    const todayIncome = todayIncomes?.reduce((sum, i) => sum + i.amount, 0) || 0;
+    const todayIncomeCount = todayIncomes?.length || 0;
+
+    // Fetch this month's income
+    const { data: monthIncomes, error: monthIncomeError } = await supabase
+      .from('Incomes')
+      .select('*, Categories(name, icon, color)')
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth);
+
+    if (monthIncomeError) {
+      console.error('Error fetching month\'s incomes:', monthIncomeError);
+    }
+
+    const thisMonthIncome = monthIncomes?.reduce((sum, i) => sum + i.amount, 0) || 0;
+
+    // Calculate savings
+    const thisMonthSavings = thisMonthIncome - thisMonthTotal;
+    const thisMonthSavingsRate = thisMonthIncome > 0 ? (thisMonthSavings / thisMonthIncome) * 100 : 0;
+
+    // Calculate top income categories
+    const incomeCategoryMap = new Map<string, CategorySpending>();
+    monthIncomes?.forEach((income: any) => {
+      const categoryId = income.category_id;
+      if (!incomeCategoryMap.has(categoryId)) {
+        incomeCategoryMap.set(categoryId, {
+          categoryId,
+          categoryName: income.Categories?.name || 'Unknown',
+          categoryIcon: income.Categories?.icon || '',
+          categoryColor: income.Categories?.color || '#000000',
+          totalAmount: 0,
+          count: 0,
+          percentage: 0,
+        });
+      }
+      const category = incomeCategoryMap.get(categoryId)!;
+      category.totalAmount += income.amount;
+      category.count += 1;
+    });
+
+    const topIncomeCategories = Array.from(incomeCategoryMap.values())
+      .map(cat => ({
+        ...cat,
+        percentage: thisMonthIncome > 0 ? (cat.totalAmount / thisMonthIncome) * 100 : 0,
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+      .slice(0, 5);
+
     return {
       todayTotal,
       todayCount,
@@ -123,6 +186,16 @@ export const dashboardService = {
       daysRemainingInMonth: daysRemaining,
       topCategories,
       recentExpenses,
+      todayIncome,
+      todayIncomeCount,
+      thisMonthIncome,
+      thisMonthSavings,
+      thisMonthSavingsRate,
+      topIncomeCategories,
+      recentIncomes: [],
+      activeSavingsGoals: [],
+      recurringTotal,
+      nonRecurringTotal,
     };
   },
 };

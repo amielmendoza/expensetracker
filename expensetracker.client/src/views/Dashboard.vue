@@ -5,26 +5,79 @@
     <div v-if="loading" class="loading">Loading...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="summary" class="dashboard-content">
-      <!-- Today's Summary -->
+      <!-- Summary Cards -->
       <div class="summary-cards">
-        <div class="card today-card">
-          <h2>Today</h2>
-          <div class="amount">{{ formatCurrency(summary.todayTotal) }}</div>
-          <div class="count">{{ summary.todayCount }} expense{{ summary.todayCount !== 1 ? 's' : '' }}</div>
-          <div v-if="summary.yesterdayTotal > 0" class="comparison">
-            <span :class="summary.todayTotal > summary.yesterdayTotal ? 'increase' : 'decrease'">
-              {{ summary.todayTotal > summary.yesterdayTotal ? '↑' : '↓' }}
-              {{ Math.abs(((summary.todayTotal - summary.yesterdayTotal) / summary.yesterdayTotal) * 100).toFixed(1) }}%
-            </span>
-            vs yesterday
+        <div class="card expense-card">
+          <h2>Expenses (This Month)</h2>
+          <div class="amount expense">{{ formatCurrency(summary.thisMonthTotal) }}</div>
+          <div class="stats">
+            <div class="stat-item">
+              <span class="stat-label">Today</span>
+              <span class="stat-value">{{ formatCurrency(summary.todayTotal) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Daily avg</span>
+              <span class="stat-value">{{ formatCurrency(summary.thisMonthAverage) }}</span>
+            </div>
           </div>
         </div>
 
-        <div class="card month-card">
-          <h2>This Month</h2>
-          <div class="amount">{{ formatCurrency(summary.thisMonthTotal) }}</div>
-          <div class="average">Daily avg: {{ formatCurrency(summary.thisMonthAverage) }}</div>
-          <div class="days-remaining">{{ summary.daysRemainingInMonth }} days remaining</div>
+        <div class="card income-card">
+          <h2>Income (This Month)</h2>
+          <div class="amount income">{{ formatCurrency(summary.thisMonthIncome) }}</div>
+          <div class="stats">
+            <div class="stat-item">
+              <span class="stat-label">Today</span>
+              <span class="stat-value">{{ formatCurrency(summary.todayIncome) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Entries</span>
+              <span class="stat-value">{{ summary.todayIncomeCount }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card savings-card">
+          <h2>Savings (This Month)</h2>
+          <div class="amount" :class="summary.thisMonthSavings >= 0 ? 'positive' : 'negative'">
+            {{ formatCurrency(summary.thisMonthSavings) }}
+          </div>
+          <div class="stats">
+            <div class="stat-item">
+              <span class="stat-label">Savings Rate</span>
+              <span class="stat-value" :class="summary.thisMonthSavingsRate >= 0 ? 'positive' : 'negative'">
+                {{ summary.thisMonthSavingsRate.toFixed(1) }}%
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Days left</span>
+              <span class="stat-value">{{ summary.daysRemainingInMonth }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card recurring-card">
+          <h2>Recurring vs One-time</h2>
+          <div class="recurring-breakdown">
+            <div class="recurring-item">
+              <span class="recurring-label">Recurring</span>
+              <span class="recurring-value">{{ formatCurrency(summary.recurringTotal) }}</span>
+            </div>
+            <div class="recurring-item">
+              <span class="recurring-label">One-time</span>
+              <span class="recurring-value">{{ formatCurrency(summary.nonRecurringTotal) }}</span>
+            </div>
+          </div>
+          <div class="recurring-bar">
+            <div
+              class="recurring-bar-fill"
+              :style="{ width: summary.thisMonthTotal > 0 ? (summary.recurringTotal / summary.thisMonthTotal * 100) + '%' : '0%' }"
+            ></div>
+          </div>
+          <div class="recurring-percentages">
+            <span>{{ summary.thisMonthTotal > 0 ? (summary.recurringTotal / summary.thisMonthTotal * 100).toFixed(0) : 0 }}% recurring</span>
+            <span>{{ summary.thisMonthTotal > 0 ? (summary.nonRecurringTotal / summary.thisMonthTotal * 100).toFixed(0) : 0 }}% one-time</span>
+          </div>
         </div>
       </div>
 
@@ -173,12 +226,20 @@ onMounted(async () => {
   box-shadow: var(--shadow-lg);
 }
 
-.today-card::before {
-  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+.expense-card::before {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
 }
 
-.month-card::before {
-  background: linear-gradient(90deg, var(--secondary) 0%, var(--primary) 100%);
+.income-card::before {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+.savings-card::before {
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.recurring-card::before {
+  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
 .card h2 {
@@ -194,38 +255,61 @@ onMounted(async () => {
   font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   letter-spacing: -0.02em;
 }
 
-.count,
-.average,
-.days-remaining {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+.amount.expense {
+  color: #ef4444;
 }
 
-.comparison {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
+.amount.income {
+  color: #10b981;
+}
+
+.amount.positive {
+  color: #10b981;
+}
+
+.amount.negative {
+  color: #ef4444;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border);
+}
+
+.stat-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.comparison .increase {
-  color: var(--danger);
-  font-weight: 600;
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.comparison .decrease {
-  color: var(--success);
-  font-weight: 600;
+.stat-value {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.stat-value.positive {
+  color: #10b981;
+}
+
+.stat-value.negative {
+  color: #ef4444;
 }
 
 .top-categories,
@@ -334,6 +418,55 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
   background: rgba(99, 102, 241, 0.1);
   border-radius: var(--radius-sm);
+}
+
+.recurring-breakdown {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.recurring-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.recurring-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.recurring-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.recurring-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.recurring-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.recurring-percentages {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 </style>
 

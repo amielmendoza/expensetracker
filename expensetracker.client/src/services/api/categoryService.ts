@@ -9,6 +9,7 @@ const transformCategoryRow = (row: any): Category => {
     icon: row.icon,
     color: row.color,
     isDefault: row.is_default,
+    type: row.type ?? 0, // Default to Expense (0) if not set
     parentCategoryId: row.parent_category_id || undefined,
   };
 };

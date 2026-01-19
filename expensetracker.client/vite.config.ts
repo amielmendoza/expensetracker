@@ -7,30 +7,48 @@ import path from 'path';
 import child_process from 'child_process';
 import { env } from 'process';
 
-const baseFolder =
-    env.APPDATA !== undefined && env.APPDATA !== ''
-        ? `${env.APPDATA}/ASP.NET/https`
-        : `${env.HOME}/.aspnet/https`;
+// Detect CI/cloud build environments (Vercel, GitHub Actions, etc.)
+const isCI = env.CI === 'true' || env.VERCEL === '1';
+const isLocalDev = !isCI && env.NODE_ENV !== 'production';
 
-const certificateName = "expensetracker.client";
-const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
-const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
+// Certificate setup for local HTTPS development only
+let httpsConfig: { key: Buffer; cert: Buffer } | undefined = undefined;
 
-if (!fs.existsSync(baseFolder)) {
-    fs.mkdirSync(baseFolder, { recursive: true });
-}
+if (isLocalDev) {
+    const baseFolder =
+        env.APPDATA !== undefined && env.APPDATA !== ''
+            ? `${env.APPDATA}/ASP.NET/https`
+            : `${env.HOME}/.aspnet/https`;
 
-if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
-    if (0 !== child_process.spawnSync('dotnet', [
-        'dev-certs',
-        'https',
-        '--export-path',
-        certFilePath,
-        '--format',
-        'Pem',
-        '--no-password',
-    ], { stdio: 'inherit', }).status) {
-        throw new Error("Could not create certificate.");
+    const certificateName = "expensetracker.client";
+    const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
+    const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
+
+    if (!fs.existsSync(baseFolder)) {
+        fs.mkdirSync(baseFolder, { recursive: true });
+    }
+
+    if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
+        const result = child_process.spawnSync('dotnet', [
+            'dev-certs',
+            'https',
+            '--export-path',
+            certFilePath,
+            '--format',
+            'Pem',
+            '--no-password',
+        ], { stdio: 'inherit' });
+
+        if (result.status !== 0) {
+            console.warn("Could not create certificate. HTTPS will be disabled for dev server.");
+        }
+    }
+
+    if (fs.existsSync(certFilePath) && fs.existsSync(keyFilePath)) {
+        httpsConfig = {
+            key: fs.readFileSync(keyFilePath),
+            cert: fs.readFileSync(certFilePath),
+        };
     }
 }
 
@@ -46,7 +64,7 @@ export default defineConfig({
         }
     },
     build: {
-        outDir: '../ExpenseTracker.Server/wwwroot',
+        outDir: 'dist',
         emptyOutDir: true,
     },
     server: {
@@ -57,9 +75,6 @@ export default defineConfig({
             }
         },
         port: parseInt(env.DEV_SERVER_PORT || '61062'),
-        https: {
-            key: fs.readFileSync(keyFilePath),
-            cert: fs.readFileSync(certFilePath),
-        }
+        https: httpsConfig,
     }
 })

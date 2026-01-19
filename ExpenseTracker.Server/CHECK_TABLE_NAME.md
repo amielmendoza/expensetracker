@@ -41,3 +41,5 @@ We need to update the DbContext to use: `entity.ToTable("\"Categories\"");`
 Run migrations to create the table with the correct structure.
 
 
+
+
