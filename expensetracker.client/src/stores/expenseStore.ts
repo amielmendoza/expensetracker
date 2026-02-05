@@ -8,6 +8,21 @@ export const useExpenseStore = defineStore('expense', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
+  // Selected month state (defaults to current month)
+  const now = new Date();
+  const selectedYear = ref(now.getFullYear());
+  const selectedMonth = ref(now.getMonth()); // 0-indexed
+
+  const isCurrentMonth = computed(() => {
+    const now = new Date();
+    return selectedYear.value === now.getFullYear() && selectedMonth.value === now.getMonth();
+  });
+
+  const selectedMonthLabel = computed(() => {
+    const date = new Date(selectedYear.value, selectedMonth.value, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
+
   const todayExpenses = computed(() => {
     const today = new Date().toISOString().split('T')[0] || '';
     return expenses.value.filter((e) => e.date.startsWith(today));
@@ -145,16 +160,78 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
+  async function fetchSelectedMonth(year?: number, month?: number) {
+    // Update selected month if provided
+    if (year !== undefined) selectedYear.value = year;
+    if (month !== undefined) selectedMonth.value = month;
+
+    // Use local date formatting to avoid timezone issues
+    const startDate = new Date(selectedYear.value, selectedMonth.value, 1);
+    const endDate = new Date(selectedYear.value, selectedMonth.value + 1, 0);
+
+    const formatLocalDate = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    await fetchAll({
+      startDate: formatLocalDate(startDate),
+      endDate: formatLocalDate(endDate),
+    });
+  }
+
+  function goToPreviousMonth() {
+    if (selectedMonth.value === 0) {
+      selectedMonth.value = 11;
+      selectedYear.value--;
+    } else {
+      selectedMonth.value--;
+    }
+    fetchSelectedMonth();
+  }
+
+  function goToNextMonth() {
+    const now = new Date();
+    // Don't allow going past current month
+    if (selectedYear.value === now.getFullYear() && selectedMonth.value >= now.getMonth()) {
+      return;
+    }
+    if (selectedMonth.value === 11) {
+      selectedMonth.value = 0;
+      selectedYear.value++;
+    } else {
+      selectedMonth.value++;
+    }
+    fetchSelectedMonth();
+  }
+
+  function goToCurrentMonth() {
+    const now = new Date();
+    selectedYear.value = now.getFullYear();
+    selectedMonth.value = now.getMonth();
+    fetchSelectedMonth();
+  }
+
   return {
     expenses,
     loading,
     error,
+    selectedYear,
+    selectedMonth,
+    selectedMonthLabel,
+    isCurrentMonth,
     todayExpenses,
     todayTotal,
     fetchAll,
     fetchById,
     fetchToday,
     fetchThisMonth,
+    fetchSelectedMonth,
+    goToPreviousMonth,
+    goToNextMonth,
+    goToCurrentMonth,
     create,
     update,
     remove,

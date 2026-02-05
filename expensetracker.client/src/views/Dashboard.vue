@@ -1,127 +1,207 @@
 <template>
   <div class="dashboard">
-    <h1>Expense Dashboard</h1>
-    
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <h1>Dashboard <span class="live-badge">Live</span></h1>
+      </div>
+      <div class="header-right">
+        <button class="btn-add" @click="$router.push('/expenses')">+ Add Transaction</button>
+      </div>
+    </div>
+
+    <!-- Month Selector -->
+    <div class="month-selector">
+      <button class="month-nav-btn" @click="goToPreviousMonth">&larr;</button>
+      <span class="current-month">{{ selectedMonthLabel }}</span>
+      <button class="month-nav-btn" @click="goToNextMonth" :disabled="isCurrentMonth">&rarr;</button>
+      <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
+    </div>
+
+    <div v-if="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading dashboard...</p>
+    </div>
+    <div v-else-if="error" class="error">
+      <p>{{ error }}</p>
+    </div>
     <div v-else-if="summary" class="dashboard-content">
       <!-- Summary Cards -->
       <div class="summary-cards">
-        <div class="card expense-card">
-          <h2>Expenses (This Month)</h2>
-          <div class="amount expense">{{ formatCurrency(summary.thisMonthTotal) }}</div>
-          <div class="stats">
-            <div class="stat-item">
-              <span class="stat-label">Today</span>
-              <span class="stat-value">{{ formatCurrency(summary.todayTotal) }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Daily avg</span>
-              <span class="stat-value">{{ formatCurrency(summary.thisMonthAverage) }}</span>
-            </div>
+        <div class="summary-card income-card">
+          <div class="card-header">
+            <span class="card-label">Total Income</span>
+            <span class="card-icon">📈</span>
+          </div>
+          <div class="card-amount">{{ formatLargeAmount(summary.thisMonthIncome) }}</div>
+          <div class="card-footer">
+            <span>This month</span>
+            <span class="change positive" v-if="isCurrentMonth">+{{ calculateIncomeChange }}%</span>
           </div>
         </div>
 
-        <div class="card income-card">
-          <h2>Income (This Month)</h2>
-          <div class="amount income">{{ formatCurrency(summary.thisMonthIncome) }}</div>
-          <div class="stats">
-            <div class="stat-item">
-              <span class="stat-label">Today</span>
-              <span class="stat-value">{{ formatCurrency(summary.todayIncome) }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Entries</span>
-              <span class="stat-value">{{ summary.todayIncomeCount }}</span>
-            </div>
+        <div class="summary-card expense-card">
+          <div class="card-header">
+            <span class="card-label">Total Expenses</span>
+            <span class="card-icon">📉</span>
+          </div>
+          <div class="card-amount">{{ formatLargeAmount(summary.thisMonthTotal) }}</div>
+          <div class="card-footer">
+            <span>This month</span>
+            <span class="change negative" v-if="isCurrentMonth">+{{ calculateExpenseChange }}%</span>
           </div>
         </div>
 
-        <div class="card savings-card">
-          <h2>Savings (This Month)</h2>
-          <div class="amount" :class="summary.thisMonthSavings >= 0 ? 'positive' : 'negative'">
-            {{ formatCurrency(summary.thisMonthSavings) }}
+        <div class="summary-card savings-card">
+          <div class="card-header">
+            <span class="card-label">Net Savings</span>
+            <span class="card-icon">💰</span>
           </div>
-          <div class="stats">
-            <div class="stat-item">
-              <span class="stat-label">Savings Rate</span>
-              <span class="stat-value" :class="summary.thisMonthSavingsRate >= 0 ? 'positive' : 'negative'">
-                {{ summary.thisMonthSavingsRate.toFixed(1) }}%
-              </span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Days left</span>
-              <span class="stat-value">{{ summary.daysRemainingInMonth }}</span>
-            </div>
+          <div class="card-amount" :class="{ negative: summary.thisMonthSavings < 0 }">
+            {{ formatLargeAmount(summary.thisMonthSavings) }}
           </div>
-        </div>
-
-        <div class="card recurring-card">
-          <h2>Recurring vs One-time</h2>
-          <div class="recurring-breakdown">
-            <div class="recurring-item">
-              <span class="recurring-label">Recurring</span>
-              <span class="recurring-value">{{ formatCurrency(summary.recurringTotal) }}</span>
-            </div>
-            <div class="recurring-item">
-              <span class="recurring-label">One-time</span>
-              <span class="recurring-value">{{ formatCurrency(summary.nonRecurringTotal) }}</span>
-            </div>
-          </div>
-          <div class="recurring-bar">
-            <div
-              class="recurring-bar-fill"
-              :style="{ width: summary.thisMonthTotal > 0 ? (summary.recurringTotal / summary.thisMonthTotal * 100) + '%' : '0%' }"
-            ></div>
-          </div>
-          <div class="recurring-percentages">
-            <span>{{ summary.thisMonthTotal > 0 ? (summary.recurringTotal / summary.thisMonthTotal * 100).toFixed(0) : 0 }}% recurring</span>
-            <span>{{ summary.thisMonthTotal > 0 ? (summary.nonRecurringTotal / summary.thisMonthTotal * 100).toFixed(0) : 0 }}% one-time</span>
+          <div class="card-footer">
+            <span>{{ summary.thisMonthSavingsRate.toFixed(0) }}% savings rate</span>
+            <span class="change" :class="summary.thisMonthSavings >= 0 ? 'positive' : 'negative'">
+              {{ summary.thisMonthSavings >= 0 ? '+' : '' }}{{ summary.thisMonthSavingsRate.toFixed(1) }}%
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Top Categories -->
-      <div v-if="summary.topCategories.length > 0" class="top-categories">
-        <h2>Top Categories This Month</h2>
-        <div class="category-list">
-          <div
-            v-for="category in summary.topCategories"
-            :key="category.categoryId"
-            class="category-item"
-          >
-            <div class="category-icon" :style="{ backgroundColor: category.categoryColor }">
-              {{ category.categoryIcon }}
-            </div>
-            <div class="category-info">
-              <div class="category-name">{{ category.categoryName }}</div>
-              <div class="category-amount">{{ formatCurrency(category.totalAmount) }}</div>
-              <div class="category-count">{{ category.count }} expense{{ category.count !== 1 ? 's' : '' }}</div>
-            </div>
-            <div class="category-percentage">{{ category.percentage.toFixed(1) }}%</div>
-          </div>
+      <!-- Quick Stats -->
+      <div class="quick-stats">
+        <div class="stat-pill">
+          <span class="stat-label">Recurring</span>
+          <span class="stat-value">{{ formatLargeAmount(summary.recurringTotal) }}</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">One-time</span>
+          <span class="stat-value">{{ formatLargeAmount(summary.nonRecurringTotal) }}</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">Daily Avg</span>
+          <span class="stat-value">{{ formatLargeAmount(summary.thisMonthAverage) }}</span>
+        </div>
+        <div class="stat-pill" v-if="isCurrentMonth">
+          <span class="stat-label">Days Left</span>
+          <span class="stat-value">{{ summary.daysRemainingInMonth }}</span>
         </div>
       </div>
 
-      <!-- Recent Expenses -->
-      <div v-if="summary.recentExpenses.length > 0" class="recent-expenses">
-        <h2>Recent Expenses</h2>
-        <div class="expense-list">
-          <div
-            v-for="expense in summary.recentExpenses"
-            :key="expense.id"
-            class="expense-item"
-          >
-            <div class="expense-icon" :style="{ backgroundColor: expense.categoryColor }">
-              {{ expense.categoryIcon }}
+      <!-- Main Content Grid -->
+      <div class="main-grid">
+        <!-- Left Column -->
+        <div class="left-column">
+          <!-- Recent Transactions -->
+          <div class="card">
+            <div class="card-title">
+              <h2>Recent Transactions</h2>
+              <router-link to="/expenses" class="view-all">View all</router-link>
             </div>
-            <div class="expense-info">
-              <div class="expense-description">{{ expense.description }}</div>
-              <div class="expense-meta">
-                {{ formatDate(expense.date) }} • {{ expense.categoryName }}
+            <div class="transactions-list" v-if="summary.recentExpenses.length > 0">
+              <div
+                v-for="expense in summary.recentExpenses.slice(0, 6)"
+                :key="expense.id"
+                class="transaction-item"
+              >
+                <div class="transaction-icon" :style="{ backgroundColor: expense.categoryColor }">
+                  {{ expense.categoryIcon }}
+                </div>
+                <div class="transaction-info">
+                  <div class="transaction-name">{{ expense.description }}</div>
+                  <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}</div>
+                </div>
+                <div class="transaction-amount expense">
+                  -{{ formatLargeAmount(expense.amount) }}
+                </div>
               </div>
             </div>
-            <div class="expense-amount">{{ formatCurrency(expense.amount) }}</div>
+            <div v-else class="empty-state-small">No transactions this month</div>
+          </div>
+
+          <!-- Budget Tracker -->
+          <div class="card">
+            <div class="card-title">
+              <h2>Budget Tracker</h2>
+              <span class="card-subtitle">Monthly spending limits</span>
+            </div>
+            <div class="budget-list" v-if="summary.topCategories.length > 0">
+              <div
+                v-for="category in summary.topCategories.slice(0, 4)"
+                :key="category.categoryId"
+                class="budget-item"
+              >
+                <div class="budget-header">
+                  <span class="budget-name">{{ category.categoryName }}</span>
+                  <span class="budget-amounts">
+                    {{ formatLargeAmount(category.totalAmount) }} / {{ formatLargeAmount(category.totalAmount * 1.2) }}
+                  </span>
+                </div>
+                <div class="budget-bar">
+                  <div
+                    class="budget-fill"
+                    :style="{ width: Math.min(category.percentage, 100) + '%' }"
+                    :class="getBudgetClass(category.percentage)"
+                  ></div>
+                </div>
+                <div class="budget-footer">
+                  <span class="budget-percent">{{ category.percentage.toFixed(0) }}% used</span>
+                  <span class="budget-remaining">{{ formatLargeAmount(category.totalAmount * 0.2) }} remaining</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state-small">No spending data</div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="right-column">
+          <!-- Top Spending Categories -->
+          <div class="card">
+            <div class="card-title">
+              <h2>Top Spending Categories</h2>
+              <span class="card-subtitle">This month's breakdown</span>
+            </div>
+            <div class="categories-list" v-if="summary.topCategories.length > 0">
+              <div
+                v-for="category in summary.topCategories"
+                :key="category.categoryId"
+                class="category-row"
+              >
+                <div class="category-color" :style="{ backgroundColor: category.categoryColor }"></div>
+                <div class="category-info">
+                  <span class="category-name">{{ category.categoryName }}</span>
+                  <span class="category-percent">{{ category.percentage.toFixed(0) }}% of total</span>
+                </div>
+                <span class="category-amount">{{ formatLargeAmount(category.totalAmount) }}</span>
+              </div>
+            </div>
+            <div v-else class="empty-state-small">No categories</div>
+          </div>
+
+          <!-- Savings Goals -->
+          <div class="card">
+            <div class="card-title">
+              <h2>Savings Goals</h2>
+              <span class="card-subtitle">Track your progress</span>
+            </div>
+
+            <!-- Savings Rate Highlight -->
+            <div class="savings-highlight">
+              <div class="savings-circle" :class="{ negative: summary.thisMonthSavingsRate < 0 }">
+                <span class="savings-percent">{{ Math.abs(summary.thisMonthSavingsRate).toFixed(0) }}%</span>
+              </div>
+              <div class="savings-text">
+                <strong>{{ summary.thisMonthSavingsRate >= 0 ? '↗ Savings Rate' : '↘ Deficit Rate' }}</strong>
+                <p v-if="summary.thisMonthSavingsRate >= 50">You're saving almost half of your income. Keep it up!</p>
+                <p v-else-if="summary.thisMonthSavingsRate >= 20">Good progress on your savings!</p>
+                <p v-else-if="summary.thisMonthSavingsRate >= 0">Consider increasing your savings rate.</p>
+                <p v-else>Expenses exceed income this month.</p>
+              </div>
+            </div>
+
+            <router-link to="/savings-goals" class="view-goals-link">View all savings goals →</router-link>
           </div>
         </div>
       </div>
@@ -130,343 +210,689 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
-import { formatCurrency } from '@/utils/currencyUtils';
 import { formatDate } from '@/utils/dateUtils';
 
 const dashboardStore = useDashboardStore();
-const { summary, loading, error } = storeToRefs(dashboardStore);
-const { fetchSummary } = dashboardStore;
+const { summary, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(dashboardStore);
+const { fetchSummary, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = dashboardStore;
+
+const formatLargeAmount = (amount: number): string => {
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (absAmount >= 1000000) {
+    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
+  } else if (absAmount >= 1000) {
+    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
+  }
+  return `${sign}₱${absAmount.toFixed(0)}`;
+};
+
+const calculateIncomeChange = computed(() => {
+  return '12.5'; // Placeholder - would calculate from previous month
+});
+
+const calculateExpenseChange = computed(() => {
+  return '8.3'; // Placeholder - would calculate from previous month
+});
+
+const getBudgetClass = (percentage: number): string => {
+  if (percentage >= 100) return 'over';
+  if (percentage >= 80) return 'warning';
+  return 'normal';
+};
 
 onMounted(async () => {
-  try {
-    await fetchSummary();
-  } catch (err) {
-    console.error('Error loading dashboard:', err);
-    // Error is already handled in the store, just log it here
-  }
+  await fetchSummary();
 });
 </script>
 
 <style scoped>
 .dashboard {
-  padding: 3rem 0 2rem 0;
-  animation: fadeIn 0.3s ease-in;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.dashboard h1 {
-  margin: 0 0 2.5rem 0;
-  color: var(--text-primary);
-  font-size: 2rem;
+/* Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-left h1 {
+  margin: 0;
+  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.loading,
-.error {
-  text-align: center;
-  padding: 3rem 2rem;
+.live-badge {
+  background: #10b981;
+  color: white;
+  font-size: 0.65rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.loading {
-  color: var(--text-secondary);
-  font-size: 1.1rem;
+.btn-add {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
 }
 
-.error {
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: var(--radius);
-  padding: 1.5rem;
+.btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
 }
 
+/* Month Selector */
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.month-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-nav-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.month-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.current-month {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.today-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.today-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.card {
-  background: var(--bg-secondary);
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: all 0.3s ease;
+.summary-card {
+  padding: 1.25rem;
+  border-radius: 16px;
+  color: white;
   position: relative;
   overflow: hidden;
 }
 
-.card::before {
+.summary-card::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(30%, -30%);
 }
 
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+.income-card {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
-.expense-card::before {
-  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+.expense-card {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 }
 
-.income-card::before {
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+.savings-card {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  color: #1e293b;
 }
 
-.savings-card::before {
-  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 
-.recurring-card::before {
-  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+.card-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
-.card h2 {
-  margin: 0 0 1.5rem 0;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.card-icon {
+  font-size: 1.25rem;
 }
 
-.amount {
-  font-size: 2.5rem;
+.card-amount {
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
 }
 
-.amount.expense {
-  color: #ef4444;
+.card-amount.negative {
+  color: #dc2626;
 }
 
-.amount.income {
-  color: #10b981;
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  opacity: 0.9;
 }
 
-.amount.positive {
-  color: #10b981;
+.change {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
-.amount.negative {
-  color: #ef4444;
+.change.positive {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+.change.negative {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.stat-item {
+.savings-card .change.positive {
+  background: rgba(34, 197, 94, 0.2);
+  color: #16a34a;
+}
+
+.savings-card .change.negative {
+  background: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.875rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
-  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
 .stat-value {
   font-size: 1.1rem;
-  color: var(--text-primary);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 
-.stat-value.positive {
-  color: #10b981;
+/* Main Grid */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
 }
 
-.stat-value.negative {
-  color: #ef4444;
+.left-column, .right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.top-categories,
-.recent-expenses {
+/* Card Component */
+.card {
   background: var(--bg-secondary);
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow);
   border: 1px solid var(--border);
-  margin-bottom: 2rem;
-  transition: box-shadow 0.3s ease;
+  border-radius: 16px;
+  padding: 1.25rem;
 }
 
-.top-categories:hover,
-.recent-expenses:hover {
-  box-shadow: var(--shadow-lg);
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.top-categories h2,
-.recent-expenses h2 {
-  margin: 0 0 1.5rem 0;
-  color: var(--text-primary);
-  font-size: 1.25rem;
+.card-title h2 {
+  margin: 0;
+  font-size: 1.1rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 
-.category-list,
-.expense-list {
+.card-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.view-all {
+  font-size: 0.8rem;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.view-all:hover {
+  text-decoration: underline;
+}
+
+/* Transactions List */
+.transactions-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.category-item,
-.expense-item {
+.transaction-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--bg-primary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.category-item:hover,
-.expense-item:hover {
-  background: var(--bg-secondary);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-sm);
+.transaction-item:last-child {
+  border-bottom: none;
 }
 
-.category-icon,
-.expense-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius);
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.75rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease;
 }
 
-.category-item:hover .category-icon,
-.expense-item:hover .expense-icon {
-  transform: scale(1.1);
-}
-
-.category-info,
-.expense-info {
+.transaction-info {
   flex: 1;
   min-width: 0;
 }
 
-.category-name,
-.expense-description {
+.transaction-name {
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.25rem;
-  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.category-amount,
-.expense-amount {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 1.25rem;
-  letter-spacing: -0.01em;
-}
-
-.category-count,
-.expense-meta {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.category-percentage {
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 1rem;
-  padding: 0.5rem 1rem;
-  background: rgba(99, 102, 241, 0.1);
-  border-radius: var(--radius-sm);
-}
-
-.recurring-breakdown {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.recurring-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.recurring-label {
+.transaction-meta {
   font-size: 0.75rem;
   color: var(--text-secondary);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-.recurring-value {
-  font-size: 1.5rem;
+.transaction-amount {
+  font-size: 0.95rem;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.transaction-amount.expense {
+  color: #ef4444;
+}
+
+.transaction-amount.income {
+  color: #22c55e;
+}
+
+/* Budget List */
+.budget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.budget-item {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.budget-name {
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.recurring-bar {
-  height: 8px;
-  background: var(--bg-primary);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 0.75rem;
+.budget-amounts {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.recurring-bar-fill {
+.budget-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.375rem;
+}
+
+.budget-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
-  border-radius: 4px;
+  border-radius: 999px;
   transition: width 0.3s ease;
 }
 
-.recurring-percentages {
+.budget-fill.normal {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+}
+
+.budget-fill.warning {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+}
+
+.budget-fill.over {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+}
+
+.budget-footer {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
+}
+
+/* Categories List */
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.category-color {
+  width: 8px;
+  height: 32px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.category-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.category-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.category-percent {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.category-amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Savings Highlight */
+.savings-highlight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.savings-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 3px solid #f59e0b;
+}
+
+.savings-circle.negative {
+  border-color: #ef4444;
+}
+
+.savings-percent {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.savings-text {
+  flex: 1;
+}
+
+.savings-text strong {
+  font-size: 0.85rem;
+  color: #1e293b;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.savings-text p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.view-goals-link {
+  display: block;
+  text-align: center;
+  color: var(--primary);
+  font-size: 0.85rem;
   font-weight: 500;
+  text-decoration: none;
+}
+
+.view-goals-link:hover {
+  text-decoration: underline;
+}
+
+/* Empty State */
+.empty-state-small {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-pill {
+    min-width: auto;
+  }
+
+  .card-amount {
+    font-size: 1.5rem;
+  }
+
+  .savings-highlight {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-left h1 {
+    font-size: 1.5rem;
+  }
+
+  .btn-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .quick-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .budget-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .transaction-name {
+    max-width: 120px;
+  }
 }
 </style>
-

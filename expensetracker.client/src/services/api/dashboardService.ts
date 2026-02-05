@@ -1,6 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import type { DashboardSummary, CategorySpending, Expense } from '@/types';
 
+// Helper function to format date in local timezone as YYYY-MM-DD
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper function to transform database row to Expense
 const transformExpenseRow = (row: any): Expense => {
   return {
@@ -22,41 +30,53 @@ const transformExpenseRow = (row: any): Expense => {
 };
 
 export const dashboardService = {
-  async getSummary(): Promise<DashboardSummary> {
+  async getSummary(year?: number, month?: number): Promise<DashboardSummary> {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysRemaining = daysInMonth - now.getDate();
+    const targetYear = year ?? now.getFullYear();
+    const targetMonth = month ?? now.getMonth(); // 0-indexed
 
-    // Fetch today's expenses
-    const { data: todayExpenses, error: todayError } = await supabase
-      .from('Expenses')
-      .select('amount')
-      .eq('date', today);
+    const isCurrentMonth = targetYear === now.getFullYear() && targetMonth === now.getMonth();
 
-    if (todayError) {
-      console.error('Error fetching today\'s expenses:', todayError);
-      throw new Error(`Failed to fetch today's expenses: ${todayError.message}`);
+    const today = formatLocalDate(now);
+    const yesterday = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    const startOfMonth = formatLocalDate(new Date(targetYear, targetMonth, 1));
+    const endOfMonth = formatLocalDate(new Date(targetYear, targetMonth + 1, 0));
+    const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const daysRemaining = isCurrentMonth ? daysInMonth - now.getDate() : 0;
+    const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+
+    // Fetch today's expenses (only for current month)
+    let todayTotal = 0;
+    let todayCount = 0;
+    let yesterdayTotal = 0;
+
+    if (isCurrentMonth) {
+      const { data: todayExpenses, error: todayError } = await supabase
+        .from('Expenses')
+        .select('amount')
+        .eq('date', today);
+
+      if (todayError) {
+        console.error('Error fetching today\'s expenses:', todayError);
+        throw new Error(`Failed to fetch today's expenses: ${todayError.message}`);
+      }
+
+      todayTotal = todayExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
+      todayCount = todayExpenses?.length || 0;
+
+      // Fetch yesterday's expenses
+      const { data: yesterdayExpenses, error: yesterdayError } = await supabase
+        .from('Expenses')
+        .select('amount')
+        .eq('date', yesterday);
+
+      if (yesterdayError) {
+        console.error('Error fetching yesterday\'s expenses:', yesterdayError);
+        throw new Error(`Failed to fetch yesterday's expenses: ${yesterdayError.message}`);
+      }
+
+      yesterdayTotal = yesterdayExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
     }
-
-    const todayTotal = todayExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-    const todayCount = todayExpenses?.length || 0;
-
-    // Fetch yesterday's expenses
-    const { data: yesterdayExpenses, error: yesterdayError } = await supabase
-      .from('Expenses')
-      .select('amount')
-      .eq('date', yesterday);
-
-    if (yesterdayError) {
-      console.error('Error fetching yesterday\'s expenses:', yesterdayError);
-      throw new Error(`Failed to fetch yesterday's expenses: ${yesterdayError.message}`);
-    }
-
-    const yesterdayTotal = yesterdayExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
 
     // Fetch this month's expenses
     const { data: monthExpenses, error: monthError } = await supabase
@@ -71,7 +91,7 @@ export const dashboardService = {
     }
 
     const thisMonthTotal = monthExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-    const thisMonthAverage = monthExpenses?.length ? thisMonthTotal / now.getDate() : 0;
+    const thisMonthAverage = monthExpenses?.length ? thisMonthTotal / daysElapsed : 0;
 
     // Calculate recurring vs non-recurring totals
     const recurringTotal = monthExpenses?.reduce((sum, e) => sum + (e.is_monthly_recurring ? e.amount : 0), 0) || 0;
@@ -105,11 +125,13 @@ export const dashboardService = {
       .sort((a, b) => b.totalAmount - a.totalAmount)
       .slice(0, 5);
 
-    // Fetch recent expenses
+    // Fetch recent expenses for selected month
     const { data: recentExpensesData, error: recentError } = await supabase
       .from('Expenses')
       .select('*, Categories(name, icon, color)')
-      .order('created_at', { ascending: false })
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth)
+      .order('date', { ascending: false })
       .limit(10);
 
     if (recentError) {
@@ -119,18 +141,23 @@ export const dashboardService = {
 
     const recentExpenses = (recentExpensesData || []).map(transformExpenseRow);
 
-    // Fetch today's income
-    const { data: todayIncomes, error: todayIncomeError } = await supabase
-      .from('Incomes')
-      .select('amount')
-      .eq('date', today);
+    // Fetch today's income (only for current month)
+    let todayIncome = 0;
+    let todayIncomeCount = 0;
 
-    if (todayIncomeError) {
-      console.error('Error fetching today\'s incomes:', todayIncomeError);
+    if (isCurrentMonth) {
+      const { data: todayIncomes, error: todayIncomeError } = await supabase
+        .from('Incomes')
+        .select('amount')
+        .eq('date', today);
+
+      if (todayIncomeError) {
+        console.error('Error fetching today\'s incomes:', todayIncomeError);
+      }
+
+      todayIncome = todayIncomes?.reduce((sum, i) => sum + i.amount, 0) || 0;
+      todayIncomeCount = todayIncomes?.length || 0;
     }
-
-    const todayIncome = todayIncomes?.reduce((sum, i) => sum + i.amount, 0) || 0;
-    const todayIncomeCount = todayIncomes?.length || 0;
 
     // Fetch this month's income
     const { data: monthIncomes, error: monthIncomeError } = await supabase

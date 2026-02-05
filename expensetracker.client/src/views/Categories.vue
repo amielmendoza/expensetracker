@@ -1,52 +1,152 @@
 <template>
-  <div class="categories-page">
+  <div class="page-container">
+    <!-- Header -->
     <div class="page-header">
-      <h1>Categories</h1>
-      <button @click="showAddModal = true" class="btn-primary">+ Add Category</button>
+      <div class="header-left">
+        <h1>Categories</h1>
+      </div>
+      <div class="header-right">
+        <button class="btn-add" @click="openAddModal">+ Add Category</button>
+      </div>
     </div>
 
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button
+        class="filter-tab"
+        :class="{ active: filter === 'all' }"
+        @click="filter = 'all'"
+      >
+        All
+      </button>
+      <button
+        class="filter-tab"
+        :class="{ active: filter === 'expense' }"
+        @click="filter = 'expense'"
+      >
+        Expense
+      </button>
+      <button
+        class="filter-tab"
+        :class="{ active: filter === 'income' }"
+        @click="filter = 'income'"
+      >
+        Income
+      </button>
+    </div>
+
+    <div v-if="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading categories...</p>
+    </div>
+    <div v-else-if="error" class="error">
+      <p>{{ error }}</p>
+      <button @click="retryLoad" class="btn-secondary">Retry</button>
+    </div>
     <div v-else>
-      <div class="categories-grid">
+      <div v-if="filteredCategories.length === 0" class="empty-state">
+        <div class="empty-icon">🏷️</div>
+        <h3>No categories found</h3>
+        <p>Create custom categories to organize your transactions!</p>
+        <button @click="openAddModal" class="btn-add">+ Add Category</button>
+      </div>
+      <div v-else class="categories-grid">
         <div
-          v-for="category in categories"
+          v-for="category in filteredCategories"
           :key="category.id"
           class="category-card"
-          :style="{ borderLeftColor: category.color }"
         >
           <div class="category-icon" :style="{ backgroundColor: category.color }">
             {{ category.icon }}
           </div>
-          <div class="category-name">{{ category.name }}</div>
-          <div v-if="!category.isDefault" class="category-actions">
-            <button @click="editCategory(category)" class="btn-icon">✏️</button>
-            <button @click="deleteCategory(category.id)" class="btn-icon">🗑️</button>
+          <div class="category-info">
+            <h3>{{ category.name }}</h3>
+            <span class="category-type" :class="getTypeClass(category.type)">
+              {{ getTypeLabel(category.type) }}
+            </span>
           </div>
+          <div class="category-actions" v-if="!category.isDefault">
+            <button @click="editCategory(category)" class="btn-icon" title="Edit">✏️</button>
+            <button @click="deleteCategory(category.id)" class="btn-icon delete" title="Delete">🗑️</button>
+          </div>
+          <div v-else class="default-badge">Default</div>
         </div>
       </div>
     </div>
 
-    <!-- Add/Edit Category Modal -->
+    <!-- Add/Edit Modal -->
     <div v-if="showAddModal || editingCategory" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
-        <h2>{{ editingCategory ? 'Edit Category' : 'Add Category' }}</h2>
+        <div class="modal-header">
+          <h2>{{ editingCategory ? 'Edit Category' : 'Add Category' }}</h2>
+          <button class="modal-close" @click="closeModal">&times;</button>
+        </div>
         <form @submit.prevent="saveCategory">
           <div class="form-group">
-            <label>Name *</label>
-            <input v-model="categoryForm.name" required />
+            <label>Category Name *</label>
+            <input
+              v-model="categoryForm.name"
+              type="text"
+              placeholder="e.g., Groceries, Salary"
+              required
+            />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Icon *</label>
+              <div class="icon-picker">
+                <input
+                  v-model="categoryForm.icon"
+                  type="text"
+                  placeholder="🍔"
+                  maxlength="4"
+                  required
+                />
+                <div class="icon-suggestions">
+                  <button
+                    v-for="icon in suggestedIcons"
+                    :key="icon"
+                    type="button"
+                    class="icon-btn"
+                    @click="categoryForm.icon = icon"
+                  >
+                    {{ icon }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Color *</label>
+              <div class="color-picker">
+                <input
+                  v-model="categoryForm.color"
+                  type="color"
+                  required
+                />
+                <div class="color-presets">
+                  <button
+                    v-for="color in presetColors"
+                    :key="color"
+                    type="button"
+                    class="color-btn"
+                    :style="{ backgroundColor: color }"
+                    @click="categoryForm.color = color"
+                  ></button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-group">
-            <label>Icon (emoji) *</label>
-            <input v-model="categoryForm.icon" required />
-          </div>
-          <div class="form-group">
-            <label>Color *</label>
-            <input v-model="categoryForm.color" type="color" required />
+            <label>Type *</label>
+            <select v-model.number="categoryForm.type" required>
+              <option :value="0">Expense</option>
+              <option :value="1">Income</option>
+              <option :value="2">Both</option>
+            </select>
           </div>
           <div class="form-actions">
             <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
-            <button type="submit" class="btn-primary">Save</button>
+            <button type="submit" class="btn-add">{{ editingCategory ? 'Update' : 'Add' }} Category</button>
           </div>
         </form>
       </div>
@@ -55,15 +155,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCategoryStore } from '@/stores/categoryStore';
 import type { Category } from '@/types';
+import { CategoryType } from '@/types';
 
 const categoryStore = useCategoryStore();
 
 const { categories, loading, error } = storeToRefs(categoryStore);
 const { fetchAll, create, update, remove } = categoryStore;
+
+const filter = ref<'all' | 'expense' | 'income'>('all');
+
+const filteredCategories = computed(() => {
+  if (!categories.value) return [];
+  if (filter.value === 'all') return categories.value;
+  if (filter.value === 'expense') {
+    return categories.value.filter(c => c.type === CategoryType.Expense || c.type === CategoryType.Both);
+  }
+  return categories.value.filter(c => c.type === CategoryType.Income || c.type === CategoryType.Both);
+});
 
 const showAddModal = ref(false);
 const editingCategory = ref<Category | null>(null);
@@ -71,16 +183,41 @@ const editingCategory = ref<Category | null>(null);
 const categoryForm = reactive({
   name: '',
   icon: '',
-  color: '#000000',
+  color: '#6366f1',
+  type: CategoryType.Expense,
 });
 
-onMounted(async () => {
+const suggestedIcons = ['🍔', '🚗', '🏠', '💡', '🎬', '🛒', '💼', '💰', '🎁', '✈️', '🏥', '📱'];
+const presetColors = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+function getTypeLabel(type: CategoryType): string {
+  const labels = {
+    [CategoryType.Expense]: 'Expense',
+    [CategoryType.Income]: 'Income',
+    [CategoryType.Both]: 'Both',
+  };
+  return labels[type] || 'Unknown';
+}
+
+function getTypeClass(type: CategoryType): string {
+  const classes = {
+    [CategoryType.Expense]: 'expense',
+    [CategoryType.Income]: 'income',
+    [CategoryType.Both]: 'both',
+  };
+  return classes[type] || '';
+}
+
+async function retryLoad() {
   try {
     await fetchAll();
   } catch (err) {
     console.error('Error loading categories:', err);
-    // Error is already handled in the store, just log it here
   }
+}
+
+onMounted(async () => {
+  await retryLoad();
 });
 
 function editCategory(category: Category) {
@@ -88,6 +225,11 @@ function editCategory(category: Category) {
   categoryForm.name = category.name;
   categoryForm.icon = category.icon;
   categoryForm.color = category.color;
+  categoryForm.type = category.type;
+}
+
+function openAddModal() {
+  showAddModal.value = true;
 }
 
 function closeModal() {
@@ -99,7 +241,8 @@ function closeModal() {
 function resetForm() {
   categoryForm.name = '';
   categoryForm.icon = '';
-  categoryForm.color = '#000000';
+  categoryForm.color = '#6366f1';
+  categoryForm.type = CategoryType.Expense;
 }
 
 async function saveCategory() {
@@ -127,173 +270,251 @@ async function deleteCategory(id: string) {
 </script>
 
 <style scoped>
-.categories-page {
-  padding: 3rem 0 2rem 0;
-  animation: fadeIn 0.3s ease-in;
+.page-container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.page-header h1 {
+.header-left h1 {
   margin: 0;
-  color: var(--text-primary);
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+.btn-add {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 0.95rem;
-  box-shadow: var(--shadow);
+  font-size: 0.875rem;
+  cursor: pointer;
   transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
 }
 
-.btn-primary:hover {
+.btn-add:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
 }
 
-.loading,
-.error {
-  text-align: center;
-  padding: 3rem 2rem;
+.filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-secondary);
+  padding: 0.375rem;
+  border-radius: 10px;
+  width: fit-content;
 }
 
-.loading {
+.filter-tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.error {
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: var(--radius);
-  padding: 1.5rem;
+.filter-tab:hover {
+  color: var(--text-primary);
+}
+
+.filter-tab.active {
+  background: var(--bg-primary);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
 .category-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
   background: var(--bg-secondary);
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow);
   border: 1px solid var(--border);
-  border-left: 4px solid;
-  position: relative;
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.category-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: inherit;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
 .category-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.category-card:hover::before {
-  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .category-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
-  margin-bottom: 1.25rem;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.3s ease;
+  font-size: 1.5rem;
+  flex-shrink: 0;
 }
 
-.category-card:hover .category-icon {
-  transform: scale(1.1) rotate(5deg);
+.category-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.category-name {
-  font-weight: 700;
+.category-info h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--text-primary);
-  font-size: 1.15rem;
-  letter-spacing: -0.01em;
+}
+
+.category-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.category-type.expense {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.category-type.income {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.category-type.both {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
 }
 
 .category-actions {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
   display: flex;
-  gap: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.category-card:hover .category-actions {
-  opacity: 1;
+  gap: 0.25rem;
 }
 
 .btn-icon {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-  width: 36px;
-  height: 36px;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .btn-icon:hover {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-  transform: scale(1.1);
+  background: var(--border);
+}
+
+.btn-icon.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.default-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+}
+
+.empty-state p {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary);
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-primary);
 }
 
 .modal-overlay {
@@ -302,103 +523,202 @@ async function deleteCategory(id: string) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
   padding: 1rem;
 }
 
 .modal-content {
   background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
-  padding: 2.5rem;
-  max-width: 500px;
+  border-radius: 20px;
   width: 100%;
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--border);
-  animation: slideUp 0.3s ease;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
-.modal-content h2 {
-  margin: 0 0 2rem 0;
-  color: var(--text-primary);
-  font-size: 1.75rem;
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+form {
+  padding: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  transition: all 0.2s ease;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: inherit;
+  transition: all 0.2s ease;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  background: var(--bg-secondary);
+}
+
+.icon-picker input {
+  text-align: center;
+  font-size: 1.5rem;
+  padding: 0.5rem;
+}
+
+.icon-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: var(--border);
+  transform: scale(1.1);
+}
+
+.color-picker input[type="color"] {
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.color-presets {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-btn:hover {
+  transform: scale(1.2);
+  border-color: var(--text-primary);
 }
 
 .form-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: flex-end;
-  margin-top: 2.5rem;
-  padding-top: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
 
-.btn-secondary {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 2px solid var(--border);
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filter-tabs {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .categories-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
-.btn-secondary:hover {
-  background: var(--bg-secondary);
-  border-color: var(--text-secondary);
+@media (max-width: 480px) {
+  .header-left h1 {
+    font-size: 1.5rem;
+  }
 }
 </style>
-

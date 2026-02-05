@@ -2,13 +2,63 @@
   <div id="app">
     <nav class="navbar">
       <div class="nav-container">
-        <router-link to="/" class="nav-logo">💰 Expense Tracker</router-link>
-        <div class="nav-links">
-          <router-link to="/" class="nav-link" exact-active-class="router-link-exact-active">Dashboard</router-link>
-          <router-link to="/expenses" class="nav-link" exact-active-class="router-link-exact-active">Expenses</router-link>
-          <router-link to="/income" class="nav-link" exact-active-class="router-link-exact-active">Income</router-link>
-          <router-link to="/savings-goals" class="nav-link" exact-active-class="router-link-exact-active">Savings Goals</router-link>
-          <router-link to="/categories" class="nav-link" exact-active-class="router-link-exact-active">Categories</router-link>
+        <router-link to="/" class="nav-logo">
+          <span class="logo-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </span>
+          <span class="logo-text">ExpenseTracker</span>
+        </router-link>
+
+        <button class="mobile-menu-btn" @click="toggleMobileMenu" :class="{ active: mobileMenuOpen }">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="nav-links" :class="{ open: mobileMenuOpen }">
+          <router-link to="/" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span class="nav-text">Dashboard</span>
+          </router-link>
+          <router-link to="/expenses" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <path d="M7 15h0M2 9h20"></path>
+            </svg>
+            <span class="nav-text">Expenses</span>
+          </router-link>
+          <router-link to="/income" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span class="nav-text">Income</span>
+          </router-link>
+          <router-link to="/savings-goals" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span class="nav-text">Savings</span>
+          </router-link>
+          <router-link to="/categories" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+              <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
+            <span class="nav-text">Categories</span>
+          </router-link>
         </div>
       </div>
     </nav>
@@ -22,7 +72,18 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import QuickAddExpense from '@/components/QuickAddExpense.vue';
+
+const mobileMenuOpen = ref(false);
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+};
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false;
+};
 </script>
 
 <style>
@@ -70,68 +131,202 @@ body {
 }
 
 .navbar {
-  background: var(--bg-secondary);
-  box-shadow: var(--shadow-sm);
+  background: #1a1d29;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom: 1px solid var(--border);
 }
 
 .nav-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 0.875rem 2rem;
   display: flex;
   align-items: center;
-  gap: 3rem;
+  justify-content: space-between;
+  gap: 2rem;
 }
 
 .nav-logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #f5b731 0%, #e5a520 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(245, 183, 49, 0.3);
+}
+
+.logo-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.3px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mobile-menu-btn span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-btn.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-btn.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-btn.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
 }
 
 .nav-links {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .nav-link {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
   transition: all 0.2s ease;
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .nav-link:hover {
-  color: var(--primary);
-  background: rgba(99, 102, 241, 0.1);
+  color: white;
 }
 
-.nav-link.router-link-exact-active {
-  color: var(--primary);
-  background: rgba(99, 102, 241, 0.1);
+.nav-link.active {
+  color: white;
+  background: #22c55e;
   font-weight: 600;
+}
+
+/* Mobile responsive */
+@media (max-width: 900px) {
+  .nav-container {
+    padding: 0.75rem 1.5rem;
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-container {
+    padding: 0.75rem 1rem;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1d29;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-link {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+  }
+
+  .nav-text {
+    display: inline;
+  }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
 }
 
 .main-content {
   flex: 1;
   padding: 0;
-  background: var(--bg-primary);
+  background: #f8f9fb;
   width: 100%;
 }
 
@@ -139,7 +334,19 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  min-height: calc(100vh - 80px);
-  padding: 0 2rem;
+  min-height: calc(100vh - 70px);
+  padding: 1.5rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 0.75rem;
+  }
 }
 </style>

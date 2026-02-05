@@ -1,101 +1,140 @@
 <template>
-  <div class="incomes-page">
+  <div class="page-container">
+    <!-- Header -->
     <div class="page-header">
-      <h1>Income</h1>
-      <button @click="openAddModal" class="btn-success">+ Add Income</button>
+      <div class="header-left">
+        <h1>Income</h1>
+      </div>
+      <div class="header-right">
+        <button class="btn-add income" @click="openAddModal">+ Add Income</button>
+      </div>
     </div>
 
-    <div v-if="loading" class="loading">Loading income...</div>
+    <!-- Summary Stats -->
+    <div class="summary-row" v-if="incomes && incomes.length > 0">
+      <div class="summary-stat">
+        <span class="stat-label">Total Income</span>
+        <span class="stat-value income">{{ formatLargeAmount(totalIncome) }}</span>
+      </div>
+      <div class="summary-stat">
+        <span class="stat-label">This Month</span>
+        <span class="stat-value">{{ formatLargeAmount(thisMonthIncome) }}</span>
+      </div>
+      <div class="summary-stat">
+        <span class="stat-label">Entries</span>
+        <span class="stat-value">{{ incomes.length }}</span>
+      </div>
+    </div>
+
+    <div v-if="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading income...</p>
+    </div>
     <div v-else-if="error" class="error">
-      <p><strong>Error:</strong> {{ error }}</p>
-      <p style="font-size: 0.9rem; margin-top: 0.5rem;">Please check the browser console for more details.</p>
-      <button @click="retryLoad" class="btn-success" style="margin-top: 1rem;">Retry</button>
+      <p>{{ error }}</p>
+      <button @click="retryLoad" class="btn-secondary">Retry</button>
     </div>
     <div v-else>
       <div v-if="!incomes || incomes.length === 0" class="empty-state">
-        <p>No income found. Add your first income to get started!</p>
-        <button @click="openAddModal" class="btn-success" style="margin-top: 1rem;">+ Add Your First Income</button>
+        <div class="empty-icon">💰</div>
+        <h3>No income recorded</h3>
+        <p>Add your first income entry to start tracking your earnings!</p>
+        <button @click="openAddModal" class="btn-add income">+ Add Your First Income</button>
       </div>
-      <div v-else class="incomes-list">
-        <div
-          v-for="income in incomes"
-          :key="income.id"
-          class="income-card"
-        >
-          <div class="income-icon" :style="{ backgroundColor: income.categoryColor }">
-            {{ income.categoryIcon }}
-          </div>
-          <div class="income-details">
-            <div class="income-description">{{ income.description }}</div>
-            <div class="income-meta">
-              {{ formatDate(income.date) }} • {{ income.categoryName }} • {{ getSourceLabel(income.source) }}
+      <div v-else class="card">
+        <div class="card-title">
+          <h2>💵 Income Entries</h2>
+          <span class="badge">{{ incomes.length }}</span>
+        </div>
+        <div class="transactions-list">
+          <div
+            v-for="income in sortedIncomes"
+            :key="income.id"
+            class="transaction-item"
+          >
+            <div class="transaction-icon" :style="{ backgroundColor: income.categoryColor || '#22c55e' }">
+              {{ income.categoryIcon || '💰' }}
             </div>
-          </div>
-          <div class="income-amount">{{ formatCurrency(income.amount) }}</div>
-          <div class="income-actions">
-            <button @click="editIncome(income)" class="btn-icon">✏️</button>
-            <button @click="deleteIncome(income.id)" class="btn-icon">🗑️</button>
+            <div class="transaction-info">
+              <div class="transaction-name">{{ income.description }}</div>
+              <div class="transaction-meta">
+                {{ income.categoryName || 'Income' }} • {{ formatDate(income.date) }} • {{ getSourceLabel(income.source) }}
+              </div>
+            </div>
+            <div class="transaction-amount income">+{{ formatLargeAmount(income.amount) }}</div>
+            <div class="transaction-actions">
+              <button @click="editIncome(income)" class="btn-icon" title="Edit">✏️</button>
+              <button @click="deleteIncome(income.id)" class="btn-icon delete" title="Delete">🗑️</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Add/Edit Income Modal -->
+    <!-- Add/Edit Modal -->
     <div v-if="showAddModal || editingIncome" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
-        <h2>{{ editingIncome ? 'Edit Income' : 'Add Income' }}</h2>
+        <div class="modal-header">
+          <h2>{{ editingIncome ? 'Edit Income' : 'Add Income' }}</h2>
+          <button class="modal-close" @click="closeModal">&times;</button>
+        </div>
         <form @submit.prevent="saveIncome">
-          <div class="form-group">
-            <label>Amount *</label>
-            <input
-              v-model.number="incomeForm.amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              required
-            />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount *</label>
+              <input
+                v-model.number="incomeForm.amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Date *</label>
+              <input v-model="incomeForm.date" type="date" required />
+            </div>
           </div>
           <div class="form-group">
             <label>Description *</label>
-            <input v-model="incomeForm.description" required />
+            <input v-model="incomeForm.description" placeholder="Income source or description" required />
           </div>
-          <div class="form-group">
-            <label>Category *</label>
-            <select v-model="incomeForm.categoryId" required>
-              <option value="">Select a category</option>
-              <option
-                v-for="category in incomeCategories"
-                :key="category.id"
-                :value="category.id"
-              >
-                {{ category.icon }} {{ category.name }}
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Date *</label>
-            <input v-model="incomeForm.date" type="date" required />
-          </div>
-          <div class="form-group">
-            <label>Source</label>
-            <select v-model.number="incomeForm.source">
-              <option :value="0">Salary</option>
-              <option :value="1">Freelance</option>
-              <option :value="2">Business</option>
-              <option :value="3">Investment</option>
-              <option :value="4">Rental</option>
-              <option :value="5">Gift</option>
-              <option :value="6">Refund</option>
-              <option :value="7">Other</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Category *</label>
+              <select v-model="incomeForm.categoryId" required>
+                <option value="">Select category</option>
+                <option
+                  v-for="category in incomeCategories"
+                  :key="category.id"
+                  :value="category.id"
+                >
+                  {{ category.icon }} {{ category.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Source</label>
+              <select v-model.number="incomeForm.source">
+                <option :value="0">💼 Salary</option>
+                <option :value="1">💻 Freelance</option>
+                <option :value="2">🏢 Business</option>
+                <option :value="3">📈 Investment</option>
+                <option :value="4">🏠 Rental</option>
+                <option :value="5">🎁 Gift</option>
+                <option :value="6">↩️ Refund</option>
+                <option :value="7">📦 Other</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label>Notes</label>
-            <textarea v-model="incomeForm.notes" rows="3"></textarea>
+            <textarea v-model="incomeForm.notes" rows="2" placeholder="Optional notes..."></textarea>
           </div>
           <div class="form-actions">
             <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
-            <button type="submit" class="btn-success">Save</button>
+            <button type="submit" class="btn-add income">{{ editingIncome ? 'Update' : 'Add' }} Income</button>
           </div>
         </form>
       </div>
@@ -108,7 +147,6 @@ import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useIncomeStore } from '@/stores/incomeStore';
 import { useCategoryStore } from '@/stores/categoryStore';
-import { formatCurrency } from '@/utils/currencyUtils';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import type { Income } from '@/types';
 import { IncomeSource, CategoryType } from '@/types';
@@ -122,14 +160,24 @@ const { fetchAll, create, update, remove } = incomeStore;
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
 
+const incomeCategories = computed(() =>
+  categories.value?.filter(c => c.type === CategoryType.Income || c.type === CategoryType.Both) || []
+);
+
+const sortedIncomes = computed(() =>
+  [...(incomes.value || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+);
+
+const totalIncome = computed(() => incomes.value?.reduce((sum, i) => sum + i.amount, 0) || 0);
+
+const thisMonthIncome = computed(() => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return incomes.value?.filter(i => new Date(i.date) >= startOfMonth).reduce((sum, i) => sum + i.amount, 0) || 0;
+});
+
 const showAddModal = ref(false);
 const editingIncome = ref<Income | null>(null);
-
-const incomeCategories = computed(() => {
-  return categories.value.filter(
-    (cat) => cat.type === CategoryType.Income || cat.type === CategoryType.Both
-  );
-});
 
 const incomeForm = reactive({
   amount: 0,
@@ -140,6 +188,17 @@ const incomeForm = reactive({
   tags: [] as string[],
   notes: '',
 });
+
+const formatLargeAmount = (amount: number): string => {
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (absAmount >= 1000000) {
+    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
+  } else if (absAmount >= 1000) {
+    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
+  }
+  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 function getSourceLabel(source: IncomeSource): string {
   const labels = {
@@ -152,14 +211,14 @@ function getSourceLabel(source: IncomeSource): string {
     [IncomeSource.Refund]: 'Refund',
     [IncomeSource.Other]: 'Other',
   };
-  return labels[source] || 'Unknown';
+  return labels[source] || 'Other';
 }
 
 async function retryLoad() {
   try {
     await Promise.all([fetchAll(), fetchCategories()]);
   } catch (err) {
-    console.error('Error loading initial data:', err);
+    console.error('Error loading income:', err);
   }
 }
 
@@ -174,7 +233,7 @@ function editIncome(income: Income) {
   incomeForm.categoryId = income.categoryId;
   incomeForm.date = income.date.split('T')[0] || '';
   incomeForm.source = income.source;
-  incomeForm.tags = income.tags;
+  incomeForm.tags = income.tags || [];
   incomeForm.notes = income.notes || '';
 }
 
@@ -212,7 +271,7 @@ async function saveIncome() {
 }
 
 async function deleteIncome(id: string) {
-  if (confirm('Are you sure you want to delete this income?')) {
+  if (confirm('Are you sure you want to delete this income entry?')) {
     try {
       await remove(id);
     } catch (err) {
@@ -223,182 +282,277 @@ async function deleteIncome(id: string) {
 </script>
 
 <style scoped>
-.incomes-page {
-  padding: 3rem 0 2rem 0;
-  animation: fadeIn 0.3s ease-in;
+.page-container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.page-header h1 {
+.header-left h1 {
   margin: 0;
-  color: var(--text-primary);
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
-.btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+.btn-add {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 0.95rem;
-  box-shadow: var(--shadow);
+  font-size: 0.875rem;
+  cursor: pointer;
   transition: all 0.2s ease;
-  display: inline-flex;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.btn-add.income {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.btn-add:hover {
+  transform: translateY(-2px);
+}
+
+.btn-add.income:hover {
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.summary-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.summary-stat {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-value.income {
+  color: #22c55e;
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
+}
+
+.card-title h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.badge {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
-.btn-success:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
-.btn-success:active {
-  transform: translateY(0);
+.transaction-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.loading,
-.error {
-  text-align: center;
-  padding: 3rem 2rem;
+.transaction-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
-.loading {
+.transaction-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-meta {
+  font-size: 0.75rem;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  margin-top: 0.125rem;
 }
 
-.error {
-  color: var(--danger);
+.transaction-amount {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.transaction-amount.income {
+  color: #22c55e;
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--border);
+}
+
+.btn-icon.delete:hover {
   background: rgba(239, 68, 68, 0.1);
-  border-radius: var(--radius);
-  padding: 1.5rem;
 }
 
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
 }
 
 .empty-state p {
-  font-size: 1.1rem;
-  margin-bottom: 1.5rem;
-}
-
-.incomes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.income-card {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  background: var(--bg-secondary);
-  padding: 1.5rem;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
-}
-
-.income-card:hover {
-  transform: translateX(4px);
-  box-shadow: var(--shadow-lg);
-  border-color: #10b981;
-}
-
-.income-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease;
-}
-
-.income-card:hover .income-icon {
-  transform: scale(1.1);
-}
-
-.income-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.income-description {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-  font-size: 1.1rem;
-}
-
-.income-meta {
-  font-size: 0.875rem;
+  margin: 0 0 1.5rem 0;
   color: var(--text-secondary);
-  font-weight: 500;
 }
 
-.income-amount {
-  font-weight: 700;
-  color: #10b981;
-  font-size: 1.5rem;
-  letter-spacing: -0.01em;
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
 }
 
-.income-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-icon {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0.75rem;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
+.loading-spinner {
   width: 40px;
   height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
 }
 
-.btn-icon:hover {
-  background: #10b981;
-  color: white;
-  border-color: #10b981;
-  transform: scale(1.1);
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-primary);
 }
 
 .modal-overlay {
@@ -407,108 +561,158 @@ async function deleteIncome(id: string) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
   padding: 1rem;
 }
 
 .modal-content {
   background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
-  padding: 2.5rem;
-  max-width: 550px;
+  border-radius: 20px;
   width: 100%;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-xl);
-  animation: slideUp 0.3s ease;
-  border: 1px solid var(--border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
-.modal-content h2 {
-  margin: 0 0 2rem 0;
-  color: var(--text-primary);
-  font-size: 1.75rem;
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+form {
+  padding: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  transition: all 0.2s ease;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: inherit;
+  transition: all 0.2s ease;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-  background: var(--bg-secondary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .form-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: flex-end;
-  margin-top: 2.5rem;
-  padding-top: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
 
-.btn-secondary {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 2px solid var(--border);
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .transaction-item {
+    flex-wrap: wrap;
+  }
+
+  .transaction-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
 }
 
-.btn-secondary:hover {
-  background: var(--bg-secondary);
-  border-color: var(--text-secondary);
+@media (max-width: 480px) {
+  .header-left h1 {
+    font-size: 1.5rem;
+  }
+
+  .transaction-name {
+    max-width: 150px;
+  }
 }
 </style>
