@@ -10,6 +10,14 @@
       </div>
     </div>
 
+    <!-- Month Selector -->
+    <div class="month-selector">
+      <button class="month-nav-btn" @click="goToPreviousMonth">&larr;</button>
+      <span class="current-month">{{ selectedMonthLabel }}</span>
+      <button class="month-nav-btn" @click="goToNextMonth" :disabled="isCurrentMonth">&rarr;</button>
+      <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
+    </div>
+
     <div v-if="loading" class="loading">
       <div class="loading-spinner"></div>
       <p>Loading savings goals...</p>
@@ -19,7 +27,7 @@
       <button @click="retryLoad" class="btn-secondary">Retry</button>
     </div>
     <div v-else>
-      <div v-if="!savingsGoals || savingsGoals.length === 0" class="empty-state">
+      <div v-if="!filteredGoals || filteredGoals.length === 0" class="empty-state">
         <div class="empty-icon">🎯</div>
         <h3>No savings goals yet</h3>
         <p>Create your first savings goal to start tracking your progress!</p>
@@ -27,7 +35,7 @@
       </div>
       <div v-else class="goals-grid">
         <div
-          v-for="goal in savingsGoals"
+          v-for="goal in filteredGoals"
           :key="goal.id"
           class="goal-card"
           :class="{ inactive: !goal.isActive }"
@@ -177,8 +185,8 @@ import { BudgetPeriod } from '@/types';
 
 const savingsGoalStore = useSavingsGoalStore();
 
-const { savingsGoals, loading, error } = storeToRefs(savingsGoalStore);
-const { fetchAll, create, update, remove, recalculateProgress } = savingsGoalStore;
+const { savingsGoals, loading, error, filteredGoals, selectedMonthLabel, isCurrentMonth } = storeToRefs(savingsGoalStore);
+const { fetchAll, create, update, remove, recalculateProgress, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = savingsGoalStore;
 
 const showAddModal = ref(false);
 const editingGoal = ref<SavingsGoal | null>(null);
@@ -322,6 +330,62 @@ async function deleteGoal(id: string) {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.month-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-nav-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.month-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.current-month {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.today-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.today-btn:hover {
+  background: var(--primary);
+  color: white;
 }
 
 .btn-add {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Expense, CreateExpense, UpdateExpense, ExpenseFilter } from '@/types';
 import { expenseService } from '@/services/api/expenseService';
+import { useAccountStore } from '@/stores/accountStore';
 
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref<Expense[]>([]);
@@ -116,11 +117,12 @@ export const useExpenseStore = defineStore('expense', () => {
     try {
       const newExpense = await expenseService.create(expense);
       expenses.value.unshift(newExpense);
+      if (expense.accountId) useAccountStore().fetchAll();
       return newExpense;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create expense';
       console.error('Error creating expense:', err);
-      throw err; // Re-throw for UI to show error message
+      throw err;
     } finally {
       loading.value = false;
     }
@@ -135,11 +137,12 @@ export const useExpenseStore = defineStore('expense', () => {
       if (index >= 0) {
         expenses.value[index] = updatedExpense;
       }
+      useAccountStore().fetchAll();
       return updatedExpense;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update expense';
       console.error('Error updating expense:', err);
-      throw err; // Re-throw for UI to show error message
+      throw err;
     } finally {
       loading.value = false;
     }
@@ -151,10 +154,11 @@ export const useExpenseStore = defineStore('expense', () => {
     try {
       await expenseService.delete(id);
       expenses.value = expenses.value.filter((e) => e.id !== id);
+      useAccountStore().fetchAll();
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete expense';
       console.error('Error deleting expense:', err);
-      throw err; // Re-throw for UI to show error message
+      throw err;
     } finally {
       loading.value = false;
     }

@@ -21,6 +21,8 @@ const transformExpenseRow = (row: any): Expense => {
     categoryColor: row.Categories?.color || '',
     date: row.date,
     paymentMethod: row.payment_method,
+    accountId: row.account_id || undefined,
+    accountName: row.Accounts?.name || undefined,
     tags: row.tags || [],
     notes: row.notes || undefined,
     createdAt: row.created_at,

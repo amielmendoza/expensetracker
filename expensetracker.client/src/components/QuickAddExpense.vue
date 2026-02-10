@@ -64,12 +64,16 @@
           </div>
 
           <div class="form-group">
-            <label>Payment Method</label>
-            <select v-model.number="form.paymentMethod">
-              <option :value="0">Cash</option>
-              <option :value="1">Card</option>
-              <option :value="2">Digital Wallet</option>
-              <option :value="3">Bank Transfer</option>
+            <label>Account</label>
+            <select v-model="form.accountId">
+              <option value="">No account (cash)</option>
+              <option
+                v-for="account in accounts"
+                :key="account.id"
+                :value="account.id"
+              >
+                {{ account.icon }} {{ account.name }}
+              </option>
             </select>
           </div>
 
@@ -88,17 +92,22 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useAccountStore } from '@/stores/accountStore';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { PaymentMethod } from '@/types';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
+const accountStore = useAccountStore();
 
 const { expenses } = storeToRefs(expenseStore);
 const { create } = expenseStore;
 
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
+
+const { accounts } = storeToRefs(accountStore);
+const { fetchAll: fetchAccounts } = accountStore;
 
 const showModal = ref(false);
 
@@ -108,6 +117,7 @@ const form = reactive({
   categoryId: '',
   date: getTodayDateString(),
   paymentMethod: PaymentMethod.Cash,
+  accountId: '',
   tags: [] as string[],
   notes: '',
 });
@@ -131,10 +141,9 @@ const recentDescriptions = computed(() => {
 
 onMounted(async () => {
   try {
-    await fetchCategories();
+    await Promise.all([fetchCategories(), fetchAccounts()]);
   } catch (err) {
-    console.error('Error loading categories:', err);
-    // Error is already handled in the store, just log it here
+    console.error('Error loading data:', err);
   }
 });
 
@@ -149,6 +158,7 @@ function resetForm() {
   form.categoryId = '';
   form.date = getTodayDateString();
   form.paymentMethod = PaymentMethod.Cash;
+  form.accountId = '';
   form.tags = [];
   form.notes = '';
 }

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Dashboard from '@/views/Dashboard.vue';
 import Expenses from '@/views/Expenses.vue';
 import Income from '@/views/Income.vue';
+import Accounts from '@/views/Accounts.vue';
 import Categories from '@/views/Categories.vue';
 import SavingsGoals from '@/views/SavingsGoals.vue';
 
@@ -22,6 +23,11 @@ const router = createRouter({
       path: '/income',
       name: 'income',
       component: Income,
+    },
+    {
+      path: '/accounts',
+      name: 'accounts',
+      component: Accounts,
     },
     {
       path: '/savings-goals',

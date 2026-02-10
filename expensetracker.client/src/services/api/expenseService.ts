@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { Expense, CreateExpense, UpdateExpense, ExpenseFilter } from '@/types';
+import { accountService } from '@/services/api/accountService';
+
+const SELECT_QUERY = '*, Categories(name, icon, color), Accounts(name)';
 
 // Helper function to transform database row to Expense
 const transformExpenseRow = (row: any): Expense => {
@@ -13,6 +16,8 @@ const transformExpenseRow = (row: any): Expense => {
     categoryColor: row.Categories?.color || '',
     date: row.date,
     paymentMethod: row.payment_method,
+    accountId: row.account_id || undefined,
+    accountName: row.Accounts?.name || undefined,
     tags: row.tags || [],
     notes: row.notes || undefined,
     createdAt: row.created_at,
@@ -27,7 +32,7 @@ export const expenseService = {
 
     let query = supabase
       .from('Expenses')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .order('date', { ascending: false });
 
     if (filter) {
@@ -68,7 +73,7 @@ export const expenseService = {
   async getById(id: string): Promise<Expense> {
     const { data, error } = await supabase
       .from('Expenses')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .eq('id', id)
       .single();
 
@@ -85,7 +90,7 @@ export const expenseService = {
 
     const { data, error } = await supabase
       .from('Expenses')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .eq('date', today)
       .order('created_at', { ascending: false });
 
@@ -104,7 +109,7 @@ export const expenseService = {
 
     const { data, error } = await supabase
       .from('Expenses')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .gte('date', startOfMonth)
       .lte('date', endOfMonth)
       .order('date', { ascending: false });
@@ -126,11 +131,12 @@ export const expenseService = {
         category_id: expense.categoryId,
         date: expense.date,
         payment_method: expense.paymentMethod,
+        account_id: expense.accountId || null,
         tags: expense.tags,
         notes: expense.notes,
         is_monthly_recurring: expense.isMonthlyRecurring || false,
       })
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .single();
 
     if (error) {
@@ -138,10 +144,18 @@ export const expenseService = {
       throw new Error(`Failed to create expense: ${error.message}`);
     }
 
+    // Adjust account balance (deducts for bank/ewallet, adds for credit card)
+    if (expense.accountId) {
+      await accountService.adjustForExpense(expense.accountId, expense.amount);
+    }
+
     return transformExpenseRow(data);
   },
 
   async update(id: string, expense: UpdateExpense): Promise<Expense> {
+    // Fetch old expense to reverse previous balance adjustment
+    const oldExpense = await this.getById(id);
+
     const { data, error } = await supabase
       .from('Expenses')
       .update({
@@ -150,13 +164,14 @@ export const expenseService = {
         category_id: expense.categoryId,
         date: expense.date,
         payment_method: expense.paymentMethod,
+        account_id: expense.accountId || null,
         tags: expense.tags,
         notes: expense.notes,
         is_monthly_recurring: expense.isMonthlyRecurring || false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .single();
 
     if (error) {
@@ -164,10 +179,22 @@ export const expenseService = {
       throw new Error(`Failed to update expense: ${error.message}`);
     }
 
+    // Reverse old balance adjustment
+    if (oldExpense.accountId) {
+      await accountService.reverseForExpense(oldExpense.accountId, oldExpense.amount);
+    }
+    // Apply new balance adjustment
+    if (expense.accountId) {
+      await accountService.adjustForExpense(expense.accountId, expense.amount);
+    }
+
     return transformExpenseRow(data);
   },
 
   async delete(id: string): Promise<void> {
+    // Fetch expense to reverse balance before deleting
+    const expense = await this.getById(id);
+
     const { error } = await supabase
       .from('Expenses')
       .delete()
@@ -176,6 +203,11 @@ export const expenseService = {
     if (error) {
       console.error('Error deleting expense:', error);
       throw new Error(`Failed to delete expense: ${error.message}`);
+    }
+
+    // Reverse the balance adjustment
+    if (expense.accountId) {
+      await accountService.reverseForExpense(expense.accountId, expense.amount);
     }
   },
 };

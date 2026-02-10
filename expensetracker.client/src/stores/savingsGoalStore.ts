@@ -8,10 +8,39 @@ export const useSavingsGoalStore = defineStore('savingsGoal', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
+  // Selected month state (defaults to current month)
+  const now = new Date();
+  const selectedYear = ref(now.getFullYear());
+  const selectedMonth = ref(now.getMonth()); // 0-indexed
+
+  const isCurrentMonth = computed(() => {
+    const now = new Date();
+    return selectedYear.value === now.getFullYear() && selectedMonth.value === now.getMonth();
+  });
+
+  const selectedMonthLabel = computed(() => {
+    const date = new Date(selectedYear.value, selectedMonth.value, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
+
   const activeGoals = computed(() => {
     const now = new Date().toISOString().split('T')[0] || '';
     return savingsGoals.value.filter(
       (goal) => goal.isActive && goal.startDate <= now && goal.endDate >= now
+    );
+  });
+
+  const filteredGoals = computed(() => {
+    const formatLocalDate = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    const monthStart = formatLocalDate(new Date(selectedYear.value, selectedMonth.value, 1));
+    const monthEnd = formatLocalDate(new Date(selectedYear.value, selectedMonth.value + 1, 0));
+    return savingsGoals.value.filter(
+      (goal) => goal.startDate <= monthEnd && goal.endDate >= monthStart
     );
   });
 
@@ -145,11 +174,44 @@ export const useSavingsGoalStore = defineStore('savingsGoal', () => {
     }
   }
 
+  function goToPreviousMonth() {
+    if (selectedMonth.value === 0) {
+      selectedMonth.value = 11;
+      selectedYear.value--;
+    } else {
+      selectedMonth.value--;
+    }
+  }
+
+  function goToNextMonth() {
+    const now = new Date();
+    if (selectedYear.value === now.getFullYear() && selectedMonth.value >= now.getMonth()) {
+      return;
+    }
+    if (selectedMonth.value === 11) {
+      selectedMonth.value = 0;
+      selectedYear.value++;
+    } else {
+      selectedMonth.value++;
+    }
+  }
+
+  function goToCurrentMonth() {
+    const now = new Date();
+    selectedYear.value = now.getFullYear();
+    selectedMonth.value = now.getMonth();
+  }
+
   return {
     savingsGoals,
     loading,
     error,
+    selectedYear,
+    selectedMonth,
+    selectedMonthLabel,
+    isCurrentMonth,
     activeGoals,
+    filteredGoals,
     fetchAll,
     fetchAllActive,
     fetchById,
@@ -157,5 +219,8 @@ export const useSavingsGoalStore = defineStore('savingsGoal', () => {
     update,
     recalculateProgress,
     remove,
+    goToPreviousMonth,
+    goToNextMonth,
+    goToCurrentMonth,
   };
 });

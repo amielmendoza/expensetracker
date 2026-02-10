@@ -9,6 +9,42 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      Accounts: {
+        Row: {
+          id: string;
+          name: string;
+          type: number;
+          icon: string;
+          color: string;
+          balance: number;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: number;
+          icon: string;
+          color: string;
+          balance?: number;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: number;
+          icon?: string;
+          color?: string;
+          balance?: number;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       Categories: {
         Row: {
           id: string;
@@ -47,6 +83,7 @@ export interface Database {
           category_id: string;
           date: string;
           payment_method: number;
+          account_id: string | null;
           tags: string[];
           notes: string | null;
           created_at: string;
@@ -59,6 +96,7 @@ export interface Database {
           category_id: string;
           date: string;
           payment_method: number;
+          account_id?: string | null;
           tags?: string[];
           notes?: string | null;
           created_at?: string;
@@ -71,6 +109,7 @@ export interface Database {
           category_id?: string;
           date?: string;
           payment_method?: number;
+          account_id?: string | null;
           tags?: string[];
           notes?: string | null;
           created_at?: string;

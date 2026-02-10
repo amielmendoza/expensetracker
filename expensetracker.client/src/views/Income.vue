@@ -10,15 +10,19 @@
       </div>
     </div>
 
+    <!-- Month Selector -->
+    <div class="month-selector">
+      <button class="month-nav-btn" @click="goToPreviousMonth">&larr;</button>
+      <span class="current-month">{{ selectedMonthLabel }}</span>
+      <button class="month-nav-btn" @click="goToNextMonth" :disabled="isCurrentMonth">&rarr;</button>
+      <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
+    </div>
+
     <!-- Summary Stats -->
     <div class="summary-row" v-if="incomes && incomes.length > 0">
       <div class="summary-stat">
         <span class="stat-label">Total Income</span>
         <span class="stat-value income">{{ formatLargeAmount(totalIncome) }}</span>
-      </div>
-      <div class="summary-stat">
-        <span class="stat-label">This Month</span>
-        <span class="stat-value">{{ formatLargeAmount(thisMonthIncome) }}</span>
       </div>
       <div class="summary-stat">
         <span class="stat-label">Entries</span>
@@ -58,7 +62,7 @@
             <div class="transaction-info">
               <div class="transaction-name">{{ income.description }}</div>
               <div class="transaction-meta">
-                {{ income.categoryName || 'Income' }} • {{ formatDate(income.date) }} • {{ getSourceLabel(income.source) }}
+                {{ income.categoryName || 'Income' }} • {{ formatDate(income.date) }} • {{ getSourceLabel(income.source) }}{{ income.accountName ? ' • ' + income.accountName : '' }}
               </div>
             </div>
             <div class="transaction-amount income">+{{ formatLargeAmount(income.amount) }}</div>
@@ -129,6 +133,19 @@
             </div>
           </div>
           <div class="form-group">
+            <label>Account</label>
+            <select v-model="incomeForm.accountId">
+              <option value="">No account</option>
+              <option
+                v-for="account in accounts"
+                :key="account.id"
+                :value="account.id"
+              >
+                {{ account.icon }} {{ account.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Notes</label>
             <textarea v-model="incomeForm.notes" rows="2" placeholder="Optional notes..."></textarea>
           </div>
@@ -147,18 +164,23 @@ import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useIncomeStore } from '@/stores/incomeStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import type { Income } from '@/types';
 import { IncomeSource, CategoryType } from '@/types';
 
 const incomeStore = useIncomeStore();
 const categoryStore = useCategoryStore();
+const accountStore = useAccountStore();
 
-const { incomes, loading, error } = storeToRefs(incomeStore);
-const { fetchAll, create, update, remove } = incomeStore;
+const { incomes, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(incomeStore);
+const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = incomeStore;
 
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
+
+const { accounts } = storeToRefs(accountStore);
+const { fetchAll: fetchAccounts } = accountStore;
 
 const incomeCategories = computed(() =>
   categories.value?.filter(c => c.type === CategoryType.Income || c.type === CategoryType.Both) || []
@@ -170,12 +192,6 @@ const sortedIncomes = computed(() =>
 
 const totalIncome = computed(() => incomes.value?.reduce((sum, i) => sum + i.amount, 0) || 0);
 
-const thisMonthIncome = computed(() => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  return incomes.value?.filter(i => new Date(i.date) >= startOfMonth).reduce((sum, i) => sum + i.amount, 0) || 0;
-});
-
 const showAddModal = ref(false);
 const editingIncome = ref<Income | null>(null);
 
@@ -185,6 +201,7 @@ const incomeForm = reactive({
   categoryId: '',
   date: getTodayDateString(),
   source: IncomeSource.Salary,
+  accountId: '',
   tags: [] as string[],
   notes: '',
 });
@@ -216,7 +233,7 @@ function getSourceLabel(source: IncomeSource): string {
 
 async function retryLoad() {
   try {
-    await Promise.all([fetchAll(), fetchCategories()]);
+    await Promise.all([fetchSelectedMonth(), fetchCategories(), fetchAccounts()]);
   } catch (err) {
     console.error('Error loading income:', err);
   }
@@ -233,6 +250,7 @@ function editIncome(income: Income) {
   incomeForm.categoryId = income.categoryId;
   incomeForm.date = income.date.split('T')[0] || '';
   incomeForm.source = income.source;
+  incomeForm.accountId = income.accountId || '';
   incomeForm.tags = income.tags || [];
   incomeForm.notes = income.notes || '';
 }
@@ -253,6 +271,7 @@ function resetForm() {
   incomeForm.categoryId = '';
   incomeForm.date = getTodayDateString();
   incomeForm.source = IncomeSource.Salary;
+  incomeForm.accountId = '';
   incomeForm.tags = [];
   incomeForm.notes = '';
 }
@@ -265,6 +284,7 @@ async function saveIncome() {
       await create(incomeForm);
     }
     closeModal();
+    await fetchSelectedMonth();
   } catch (err) {
     console.error('Failed to save income:', err);
   }
@@ -308,6 +328,62 @@ async function deleteIncome(id: string) {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.month-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-nav-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.month-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.current-month {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.today-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.today-btn:hover {
+  background: var(--primary);
+  color: white;
 }
 
 .btn-add {

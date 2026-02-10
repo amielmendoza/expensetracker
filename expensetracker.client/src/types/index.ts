@@ -5,6 +5,40 @@ export enum PaymentMethod {
   BankTransfer = 3
 }
 
+export enum AccountType {
+  Bank = 0,
+  EWallet = 1,
+  CreditCard = 2
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  icon: string;
+  color: string;
+  balance: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAccount {
+  name: string;
+  type: AccountType;
+  icon: string;
+  color: string;
+  balance?: number;
+}
+
+export interface UpdateAccount {
+  name?: string;
+  type?: AccountType;
+  icon?: string;
+  color?: string;
+  balance?: number;
+}
+
 export enum IncomeSource {
   Salary = 0,
   Freelance = 1,
@@ -46,6 +80,8 @@ export interface Expense {
   categoryColor: string;
   date: string;
   paymentMethod: PaymentMethod;
+  accountId?: string;
+  accountName?: string;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -59,6 +95,7 @@ export interface CreateExpense {
   categoryId: string;
   date: string;
   paymentMethod: PaymentMethod;
+  accountId?: string;
   tags: string[];
   notes?: string;
   isMonthlyRecurring?: boolean;
@@ -70,6 +107,7 @@ export interface UpdateExpense {
   categoryId: string;
   date: string;
   paymentMethod: PaymentMethod;
+  accountId?: string;
   tags: string[];
   notes?: string;
   isMonthlyRecurring?: boolean;
@@ -95,6 +133,8 @@ export interface Income {
   categoryColor: string;
   date: string;
   source: IncomeSource;
+  accountId?: string;
+  accountName?: string;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -107,6 +147,7 @@ export interface CreateIncome {
   categoryId: string;
   date: string;
   source: IncomeSource;
+  accountId?: string;
   tags: string[];
   notes?: string;
 }
@@ -117,6 +158,7 @@ export interface UpdateIncome {
   categoryId: string;
   date: string;
   source: IncomeSource;
+  accountId?: string;
   tags: string[];
   notes?: string;
 }

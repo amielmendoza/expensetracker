@@ -71,7 +71,7 @@
               </div>
               <div class="transaction-info">
                 <div class="transaction-name">{{ expense.description }}</div>
-                <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}</div>
+                <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}{{ expense.accountName ? ' • ' + expense.accountName : '' }}</div>
               </div>
               <div class="transaction-amount expense">-{{ formatLargeAmount(expense.amount) }}</div>
               <div class="transaction-actions">
@@ -102,7 +102,7 @@
               </div>
               <div class="transaction-info">
                 <div class="transaction-name">{{ expense.description }}</div>
-                <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}</div>
+                <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}{{ expense.accountName ? ' • ' + expense.accountName : '' }}</div>
               </div>
               <div class="transaction-amount expense">-{{ formatLargeAmount(expense.amount) }}</div>
               <div class="transaction-actions">
@@ -159,12 +159,16 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Payment Method</label>
-              <select v-model.number="expenseForm.paymentMethod">
-                <option :value="0">💵 Cash</option>
-                <option :value="1">💳 Card</option>
-                <option :value="2">📱 Digital Wallet</option>
-                <option :value="3">🏦 Bank Transfer</option>
+              <label>Account</label>
+              <select v-model="expenseForm.accountId">
+                <option value="">No account (cash)</option>
+                <option
+                  v-for="account in accounts"
+                  :key="account.id"
+                  :value="account.id"
+                >
+                  {{ account.icon }} {{ account.name }}
+                </option>
               </select>
             </div>
           </div>
@@ -193,12 +197,14 @@ import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
+const accountStore = useAccountStore();
 
 const { expenses, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(expenseStore);
 const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = expenseStore;
@@ -218,6 +224,9 @@ const oneTimeTotal = computed(() => oneTimeExpenses.value.reduce((sum, e) => sum
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
 
+const { accounts } = storeToRefs(accountStore);
+const { fetchAll: fetchAccounts } = accountStore;
+
 const expenseCategories = computed(() =>
   categories.value?.filter(c => c.type === CategoryType.Expense || c.type === CategoryType.Both) || []
 );
@@ -231,6 +240,7 @@ const expenseForm = reactive({
   categoryId: '',
   date: getTodayDateString(),
   paymentMethod: PaymentMethod.Cash,
+  accountId: '',
   tags: [] as string[],
   notes: '',
   isMonthlyRecurring: false,
@@ -249,7 +259,7 @@ const formatLargeAmount = (amount: number): string => {
 
 async function retryLoad() {
   try {
-    await Promise.all([fetchSelectedMonth(), fetchCategories()]);
+    await Promise.all([fetchSelectedMonth(), fetchCategories(), fetchAccounts()]);
   } catch (err) {
     console.error('Error loading initial data:', err);
   }
@@ -266,6 +276,7 @@ function editExpense(expense: Expense) {
   expenseForm.categoryId = expense.categoryId;
   expenseForm.date = expense.date.split('T')[0] || '';
   expenseForm.paymentMethod = expense.paymentMethod;
+  expenseForm.accountId = expense.accountId || '';
   expenseForm.tags = expense.tags;
   expenseForm.notes = expense.notes || '';
   expenseForm.isMonthlyRecurring = expense.isMonthlyRecurring;
@@ -287,6 +298,7 @@ function resetForm() {
   expenseForm.categoryId = '';
   expenseForm.date = getTodayDateString();
   expenseForm.paymentMethod = PaymentMethod.Cash;
+  expenseForm.accountId = '';
   expenseForm.tags = [];
   expenseForm.notes = '';
   expenseForm.isMonthlyRecurring = false;

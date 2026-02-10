@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { Income, CreateIncome, UpdateIncome, IncomeFilter } from '@/types';
+import { accountService } from '@/services/api/accountService';
+
+const SELECT_QUERY = '*, Categories(name, icon, color), Accounts(name)';
 
 // Helper function to transform database row to Income
 const transformIncomeRow = (row: any): Income => {
@@ -13,6 +16,8 @@ const transformIncomeRow = (row: any): Income => {
     categoryColor: row.Categories?.color || '',
     date: row.date,
     source: row.source,
+    accountId: row.account_id || undefined,
+    accountName: row.Accounts?.name || undefined,
     tags: row.tags || [],
     notes: row.notes || undefined,
     createdAt: row.created_at,
@@ -26,7 +31,7 @@ export const incomeService = {
 
     let query = supabase
       .from('Incomes')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .order('date', { ascending: false });
 
     if (filter) {
@@ -67,7 +72,7 @@ export const incomeService = {
   async getById(id: string): Promise<Income> {
     const { data, error } = await supabase
       .from('Incomes')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .eq('id', id)
       .single();
 
@@ -84,7 +89,7 @@ export const incomeService = {
 
     const { data, error } = await supabase
       .from('Incomes')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .eq('date', today)
       .order('created_at', { ascending: false });
 
@@ -103,7 +108,7 @@ export const incomeService = {
 
     const { data, error } = await supabase
       .from('Incomes')
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .gte('date', startOfMonth)
       .lte('date', endOfMonth)
       .order('date', { ascending: false });
@@ -125,10 +130,11 @@ export const incomeService = {
         category_id: income.categoryId,
         date: income.date,
         source: income.source,
+        account_id: income.accountId || null,
         tags: income.tags,
         notes: income.notes,
       })
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .single();
 
     if (error) {
@@ -136,10 +142,18 @@ export const incomeService = {
       throw new Error(`Failed to create income: ${error.message}`);
     }
 
+    // Adjust account balance (adds for bank/ewallet, deducts for credit card)
+    if (income.accountId) {
+      await accountService.adjustForIncome(income.accountId, income.amount);
+    }
+
     return transformIncomeRow(data);
   },
 
   async update(id: string, income: UpdateIncome): Promise<Income> {
+    // Fetch old income to reverse previous balance adjustment
+    const oldIncome = await this.getById(id);
+
     const { data, error } = await supabase
       .from('Incomes')
       .update({
@@ -148,12 +162,13 @@ export const incomeService = {
         category_id: income.categoryId,
         date: income.date,
         source: income.source,
+        account_id: income.accountId || null,
         tags: income.tags,
         notes: income.notes,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select('*, Categories(name, icon, color)')
+      .select(SELECT_QUERY)
       .single();
 
     if (error) {
@@ -161,10 +176,22 @@ export const incomeService = {
       throw new Error(`Failed to update income: ${error.message}`);
     }
 
+    // Reverse old balance adjustment
+    if (oldIncome.accountId) {
+      await accountService.reverseForIncome(oldIncome.accountId, oldIncome.amount);
+    }
+    // Apply new balance adjustment
+    if (income.accountId) {
+      await accountService.adjustForIncome(income.accountId, income.amount);
+    }
+
     return transformIncomeRow(data);
   },
 
   async delete(id: string): Promise<void> {
+    // Fetch income to reverse balance before deleting
+    const income = await this.getById(id);
+
     const { error } = await supabase
       .from('Incomes')
       .delete()
@@ -173,6 +200,11 @@ export const incomeService = {
     if (error) {
       console.error('Error deleting income:', error);
       throw new Error(`Failed to delete income: ${error.message}`);
+    }
+
+    // Reverse the balance adjustment
+    if (income.accountId) {
+      await accountService.reverseForIncome(income.accountId, income.amount);
     }
   },
 };

@@ -45,6 +45,13 @@
             </svg>
             <span class="nav-text">Income</span>
           </router-link>
+          <router-link to="/accounts" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            <span class="nav-text">Accounts</span>
+          </router-link>
           <router-link to="/savings-goals" class="nav-link" exact-active-class="active" @click="closeMobileMenu">
             <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
