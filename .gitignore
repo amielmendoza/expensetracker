@@ -211,6 +211,9 @@ ExpenseTracker.Server/appsettings.Development.json
 .env.local
 .env.*.local
 
+# Windows NUL device artifacts
+nul
+
 # Claude Code
 .claude/
 
