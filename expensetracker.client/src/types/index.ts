@@ -312,6 +312,14 @@ export interface UpdateSavingsGoal {
   isActive?: boolean;
 }
 
+export interface MonthlyReport {
+  month: string;
+  year: number;
+  income: number;
+  expenses: number;
+  net: number;
+}
+
 
 
 

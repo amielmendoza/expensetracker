@@ -3,6 +3,7 @@ import Dashboard from '@/views/Dashboard.vue';
 import Expenses from '@/views/Expenses.vue';
 import Income from '@/views/Income.vue';
 import Accounts from '@/views/Accounts.vue';
+import Reports from '@/views/Reports.vue';
 import Categories from '@/views/Categories.vue';
 import SavingsGoals from '@/views/SavingsGoals.vue';
 
@@ -28,6 +29,11 @@ const router = createRouter({
       path: '/accounts',
       name: 'accounts',
       component: Accounts,
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: Reports,
     },
     {
       path: '/savings-goals',
