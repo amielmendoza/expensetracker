@@ -3,7 +3,18 @@
     <div class="page-header">
       <div>
         <h1>Reports</h1>
-        <p class="subtitle">Income vs Expenses - Last 6 Months</p>
+        <p class="subtitle">Income vs Expenses</p>
+      </div>
+      <div class="range-selector">
+        <button
+          v-for="option in rangeOptions"
+          :key="option.value"
+          class="range-btn"
+          :class="{ active: selectedMonths === option.value }"
+          @click="changeRange(option.value)"
+        >
+          {{ option.label }}
+        </button>
       </div>
     </div>
 
@@ -79,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Bar } from 'vue-chartjs';
 import {
@@ -98,6 +109,18 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const reportsStore = useReportsStore();
 const { monthlyData, loading, error, totalIncome, totalExpenses, totalNet } = storeToRefs(reportsStore);
 const { fetchMonthlyComparison } = reportsStore;
+
+const selectedMonths = ref(6);
+const rangeOptions = [
+  { label: '3M', value: 3 },
+  { label: '6M', value: 6 },
+  { label: '12M', value: 12 },
+];
+
+function changeRange(months: number) {
+  selectedMonths.value = months;
+  fetchMonthlyComparison(months);
+}
 
 const chartData = computed(() => ({
   labels: monthlyData.value.map((m) => `${m.month} ${m.year}`),
@@ -174,11 +197,11 @@ const formatLargeAmount = (amount: number): string => {
 };
 
 async function retryLoad() {
-  await fetchMonthlyComparison();
+  await fetchMonthlyComparison(selectedMonths.value);
 }
 
 onMounted(() => {
-  fetchMonthlyComparison();
+  fetchMonthlyComparison(selectedMonths.value);
 });
 </script>
 
@@ -205,6 +228,34 @@ onMounted(() => {
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin-top: 0.25rem;
+}
+
+.range-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.range-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.range-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.range-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
 }
 
 .summary-row {
