@@ -20,11 +20,11 @@ export const useReportsStore = defineStore('reports', () => {
     monthlyData.value.reduce((sum, m) => sum + m.net, 0)
   );
 
-  async function fetchMonthlyComparison(months: number = 6) {
+  async function fetchMonthlyComparison() {
     loading.value = true;
     error.value = null;
     try {
-      monthlyData.value = await reportsService.getMonthlyComparison(months);
+      monthlyData.value = await reportsService.getMonthlyComparison();
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load report data';
       console.error('Error fetching reports:', err);

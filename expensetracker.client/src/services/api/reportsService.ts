@@ -1,35 +1,20 @@
 import { supabase } from '@/lib/supabase';
 import type { MonthlyReport } from '@/types';
 
-const formatLocalDate = (date: Date): string => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const reportsService = {
-  async getMonthlyComparison(months: number = 6): Promise<MonthlyReport[]> {
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const startStr = formatLocalDate(startDate);
-    const endStr = formatLocalDate(endDate);
-
+  async getMonthlyComparison(): Promise<MonthlyReport[]> {
+    // Fetch all expenses and incomes (ordered by date to find earliest)
     const [expensesResult, incomesResult] = await Promise.all([
       supabase
         .from('Expenses')
         .select('amount, date')
-        .gte('date', startStr)
-        .lte('date', endStr),
+        .order('date', { ascending: true }),
       supabase
         .from('Incomes')
         .select('amount, date')
-        .gte('date', startStr)
-        .lte('date', endStr),
+        .order('date', { ascending: true }),
     ]);
 
     if (expensesResult.error) {
@@ -39,18 +24,39 @@ export const reportsService = {
       throw new Error(`Failed to fetch incomes: ${incomesResult.error.message}`);
     }
 
-    // Build a map of year-month -> totals
-    const monthMap = new Map<string, { income: number; expenses: number }>();
+    const expenses = expensesResult.data || [];
+    const incomes = incomesResult.data || [];
 
-    // Initialize all months in range
-    for (let i = 0; i < months; i++) {
-      const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+    if (expenses.length === 0 && incomes.length === 0) {
+      return [];
+    }
+
+    // Find the earliest date across both tables
+    const dates: string[] = [];
+    if (expenses.length > 0 && expenses[0]) dates.push(expenses[0].date);
+    if (incomes.length > 0 && incomes[0]) dates.push(incomes[0].date);
+    const earliest = new Date(dates.sort()[0]!);
+
+    const startYear = earliest.getFullYear();
+    const startMonth = earliest.getMonth();
+
+    const now = new Date();
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth();
+
+    // Calculate total months from earliest to current
+    const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+
+    // Build month map from earliest to now
+    const monthMap = new Map<string, { income: number; expenses: number }>();
+    for (let i = 0; i < totalMonths; i++) {
+      const d = new Date(startYear, startMonth + i, 1);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       monthMap.set(key, { income: 0, expenses: 0 });
     }
 
     // Aggregate expenses
-    for (const row of expensesResult.data || []) {
+    for (const row of expenses) {
       const d = new Date(row.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const entry = monthMap.get(key);
@@ -60,7 +66,7 @@ export const reportsService = {
     }
 
     // Aggregate incomes
-    for (const row of incomesResult.data || []) {
+    for (const row of incomes) {
       const d = new Date(row.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const entry = monthMap.get(key);
@@ -71,8 +77,8 @@ export const reportsService = {
 
     // Convert to sorted array
     const results: MonthlyReport[] = [];
-    for (let i = 0; i < months; i++) {
-      const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+    for (let i = 0; i < totalMonths; i++) {
+      const d = new Date(startYear, startMonth + i, 1);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const entry = monthMap.get(key)!;
       results.push({
