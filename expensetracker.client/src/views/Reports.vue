@@ -42,6 +42,14 @@
         </div>
       </div>
 
+      <!-- Category Breakdown -->
+      <div class="card" v-if="categoryBreakdown.length > 0">
+        <h2 class="card-title">Expense Categories (This Month)</h2>
+        <div class="doughnut-container">
+          <Doughnut :data="doughnutData" :options="doughnutOptions" />
+        </div>
+      </div>
+
       <!-- Detail Table -->
       <div class="card" v-if="monthlyData.length > 0">
         <h2 class="card-title">Monthly Breakdown</h2>
@@ -81,22 +89,23 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { Bar } from 'vue-chartjs';
+import { Bar, Doughnut } from 'vue-chartjs';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
 import { useReportsStore } from '@/stores/reportsStore';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const reportsStore = useReportsStore();
-const { monthlyData, loading, error, totalIncome, totalExpenses, totalNet } = storeToRefs(reportsStore);
+const { monthlyData, categoryBreakdown, loading, error, totalIncome, totalExpenses, totalNet } = storeToRefs(reportsStore);
 const { fetchMonthlyComparison } = reportsStore;
 
 const chartData = computed(() => ({
@@ -156,6 +165,45 @@ const chartOptions = {
           if (value >= 1000000) return `₱${(value / 1000000).toFixed(1)}M`;
           if (value >= 1000) return `₱${(value / 1000).toFixed(0)}K`;
           return `₱${value}`;
+        },
+      },
+    },
+  },
+};
+
+const doughnutData = computed(() => ({
+  labels: categoryBreakdown.value.map((c) => c.categoryName),
+  datasets: [
+    {
+      data: categoryBreakdown.value.map((c) => c.totalAmount),
+      backgroundColor: categoryBreakdown.value.map((c) => c.categoryColor),
+      borderWidth: 2,
+      borderColor: 'var(--bg-secondary)',
+      hoverOffset: 6,
+    },
+  ],
+}));
+
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '60%',
+  plugins: {
+    legend: {
+      position: 'right' as const,
+      labels: {
+        usePointStyle: true,
+        padding: 16,
+        font: { size: 12, weight: 500 as const },
+      },
+    },
+    tooltip: {
+      callbacks: {
+        label: (context: any) => {
+          const value = context.parsed;
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+          return `${context.label}: ₱${value.toLocaleString()} (${pct}%)`;
         },
       },
     },
@@ -261,6 +309,14 @@ onMounted(() => {
 .chart-container {
   height: 350px;
   position: relative;
+}
+
+.doughnut-container {
+  height: 300px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .table-wrapper {

@@ -136,6 +136,17 @@
       </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
+    <ConfirmModal
+      :visible="!!deletingId"
+      title="Delete Expense?"
+      message="This expense will be permanently removed. This action cannot be undone."
+      confirm-text="Delete"
+      icon="🗑️"
+      @confirm="confirmDelete"
+      @cancel="deletingId = null"
+    />
+
     <!-- Add/Edit Modal -->
     <div v-if="showAddModal || editingExpense" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
@@ -221,6 +232,7 @@ import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import { useToast } from '@/composables/useToast';
+import ConfirmModal from '@/components/ConfirmModal.vue';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
 
@@ -362,15 +374,22 @@ async function saveExpense() {
   }
 }
 
-async function deleteExpense(id: string) {
-  if (confirm('Are you sure you want to delete this expense?')) {
-    try {
-      await remove(id);
-      showSuccess('Expense deleted');
-    } catch (err) {
-      showError('Failed to delete expense');
-      console.error('Failed to delete expense:', err);
-    }
+const deletingId = ref<string | null>(null);
+
+function deleteExpense(id: string) {
+  deletingId.value = id;
+}
+
+async function confirmDelete() {
+  if (!deletingId.value) return;
+  try {
+    await remove(deletingId.value);
+    showSuccess('Expense deleted');
+  } catch (err) {
+    showError('Failed to delete expense');
+    console.error('Failed to delete expense:', err);
+  } finally {
+    deletingId.value = null;
   }
 }
 </script>

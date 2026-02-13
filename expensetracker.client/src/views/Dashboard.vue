@@ -36,7 +36,10 @@
           <div class="card-amount">{{ formatLargeAmount(summary.thisMonthIncome) }}</div>
           <div class="card-footer">
             <span>This month</span>
-            <span class="change positive" v-if="isCurrentMonth">+{{ calculateIncomeChange }}%</span>
+            <span v-if="calculateIncomeChange !== null" class="change" :class="Number(calculateIncomeChange) >= 0 ? 'positive' : 'negative'">
+              {{ Number(calculateIncomeChange) >= 0 ? '+' : '' }}{{ calculateIncomeChange }}%
+            </span>
+            <span v-else class="change neutral">No prev data</span>
           </div>
         </div>
 
@@ -48,7 +51,10 @@
           <div class="card-amount">{{ formatLargeAmount(summary.thisMonthTotal) }}</div>
           <div class="card-footer">
             <span>This month</span>
-            <span class="change negative" v-if="isCurrentMonth">+{{ calculateExpenseChange }}%</span>
+            <span v-if="calculateExpenseChange !== null" class="change" :class="Number(calculateExpenseChange) <= 0 ? 'positive' : 'negative'">
+              {{ Number(calculateExpenseChange) >= 0 ? '+' : '' }}{{ calculateExpenseChange }}%
+            </span>
+            <span v-else class="change neutral">No prev data</span>
           </div>
         </div>
 
@@ -124,34 +130,36 @@
           <div class="card">
             <div class="card-title">
               <h2>Budget Tracker</h2>
-              <span class="card-subtitle">Monthly spending limits</span>
+              <span class="card-subtitle">vs. last month</span>
             </div>
-            <div class="budget-list" v-if="summary.topCategories.length > 0">
+            <div class="budget-list" v-if="budgetItems.length > 0">
               <div
-                v-for="category in summary.topCategories.slice(0, 4)"
-                :key="category.categoryId"
+                v-for="item in budgetItems"
+                :key="item.categoryId"
                 class="budget-item"
               >
                 <div class="budget-header">
-                  <span class="budget-name">{{ category.categoryName }}</span>
+                  <span class="budget-name">{{ item.categoryName }}</span>
                   <span class="budget-amounts">
-                    {{ formatLargeAmount(category.totalAmount) }} / {{ formatLargeAmount(category.totalAmount * 1.2) }}
+                    {{ formatLargeAmount(item.current) }} / {{ formatLargeAmount(item.budget) }}
                   </span>
                 </div>
                 <div class="budget-bar">
                   <div
                     class="budget-fill"
-                    :style="{ width: Math.min(category.percentage, 100) + '%' }"
-                    :class="getBudgetClass(category.percentage)"
+                    :style="{ width: Math.min(item.usedPercent, 100) + '%' }"
+                    :class="getBudgetClass(item.usedPercent)"
                   ></div>
                 </div>
                 <div class="budget-footer">
-                  <span class="budget-percent">{{ category.percentage.toFixed(0) }}% used</span>
-                  <span class="budget-remaining">{{ formatLargeAmount(category.totalAmount * 0.2) }} remaining</span>
+                  <span class="budget-percent">{{ item.usedPercent.toFixed(0) }}% of last month</span>
+                  <span class="budget-remaining" :class="{ 'over-budget': item.remaining < 0 }">
+                    {{ item.remaining >= 0 ? formatLargeAmount(item.remaining) + ' remaining' : formatLargeAmount(Math.abs(item.remaining)) + ' over' }}
+                  </span>
                 </div>
               </div>
             </div>
-            <div v-else class="empty-state-small">No spending data</div>
+            <div v-else class="empty-state-small">No previous month data to compare</div>
           </div>
         </div>
 
@@ -231,11 +239,39 @@ const formatLargeAmount = (amount: number): string => {
 };
 
 const calculateIncomeChange = computed(() => {
-  return '12.5'; // Placeholder - would calculate from previous month
+  if (!summary.value || summary.value.prevMonthIncome === 0) return null;
+  const change = ((summary.value.thisMonthIncome - summary.value.prevMonthIncome) / summary.value.prevMonthIncome) * 100;
+  return change.toFixed(1);
 });
 
 const calculateExpenseChange = computed(() => {
-  return '8.3'; // Placeholder - would calculate from previous month
+  if (!summary.value || summary.value.prevMonthTotal === 0) return null;
+  const change = ((summary.value.thisMonthTotal - summary.value.prevMonthTotal) / summary.value.prevMonthTotal) * 100;
+  return change.toFixed(1);
+});
+
+const budgetItems = computed(() => {
+  if (!summary.value || !summary.value.prevMonthCategories || summary.value.prevMonthCategories.length === 0) {
+    return [];
+  }
+  const prevMap = new Map(summary.value.prevMonthCategories.map(c => [c.categoryId, c]));
+  // Show categories that existed last month, matched with current spending
+  return summary.value.prevMonthCategories
+    .slice(0, 5)
+    .map(prev => {
+      const current = summary.value!.topCategories.find(c => c.categoryId === prev.categoryId);
+      const currentAmount = current?.totalAmount || 0;
+      const budget = prev.totalAmount;
+      const usedPercent = budget > 0 ? (currentAmount / budget) * 100 : 0;
+      return {
+        categoryId: prev.categoryId,
+        categoryName: prev.categoryName,
+        current: currentAmount,
+        budget,
+        usedPercent,
+        remaining: budget - currentAmount,
+      };
+    });
 });
 
 const getBudgetClass = (percentage: number): string => {
@@ -455,6 +491,11 @@ onMounted(async () => {
 
 .change.negative {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.change.neutral {
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 0.65rem;
 }
 
 .savings-card .change.positive {
@@ -683,6 +724,11 @@ onMounted(async () => {
   justify-content: space-between;
   font-size: 0.7rem;
   color: var(--text-secondary);
+}
+
+.budget-remaining.over-budget {
+  color: #ef4444;
+  font-weight: 600;
 }
 
 /* Categories List */

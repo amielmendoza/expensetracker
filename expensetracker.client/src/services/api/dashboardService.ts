@@ -143,6 +143,53 @@ export const dashboardService = {
 
     const recentExpenses = (recentExpensesData || []).map(transformExpenseRow);
 
+    // Fetch previous month totals for % change calculation
+    const prevMonthStart = formatLocalDate(new Date(targetYear, targetMonth - 1, 1));
+    const prevMonthEnd = formatLocalDate(new Date(targetYear, targetMonth, 0));
+
+    const [prevExpensesResult, prevIncomesResult] = await Promise.all([
+      supabase
+        .from('Expenses')
+        .select('amount, category_id, Categories(name, icon, color)')
+        .gte('date', prevMonthStart)
+        .lte('date', prevMonthEnd),
+      supabase
+        .from('Incomes')
+        .select('amount')
+        .gte('date', prevMonthStart)
+        .lte('date', prevMonthEnd),
+    ]);
+
+    const prevMonthTotal = prevExpensesResult.data?.reduce((sum, e) => sum + e.amount, 0) || 0;
+    const prevMonthIncome = prevIncomesResult.data?.reduce((sum, i) => sum + i.amount, 0) || 0;
+
+    // Build previous month category spending for budget tracker
+    const prevCategoryMap = new Map<string, CategorySpending>();
+    prevExpensesResult.data?.forEach((expense: any) => {
+      const categoryId = expense.category_id;
+      if (!prevCategoryMap.has(categoryId)) {
+        prevCategoryMap.set(categoryId, {
+          categoryId,
+          categoryName: expense.Categories?.name || 'Unknown',
+          categoryIcon: expense.Categories?.icon || '',
+          categoryColor: expense.Categories?.color || '#000000',
+          totalAmount: 0,
+          count: 0,
+          percentage: 0,
+        });
+      }
+      const category = prevCategoryMap.get(categoryId)!;
+      category.totalAmount += expense.amount;
+      category.count += 1;
+    });
+
+    const prevMonthCategories = Array.from(prevCategoryMap.values())
+      .map(cat => ({
+        ...cat,
+        percentage: prevMonthTotal > 0 ? (cat.totalAmount / prevMonthTotal) * 100 : 0,
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount);
+
     // Fetch today's income (only for current month)
     let todayIncome = 0;
     let todayIncomeCount = 0;
@@ -225,6 +272,9 @@ export const dashboardService = {
       activeSavingsGoals: [],
       recurringTotal,
       nonRecurringTotal,
+      prevMonthTotal,
+      prevMonthIncome,
+      prevMonthCategories,
     };
   },
 };

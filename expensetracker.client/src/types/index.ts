@@ -209,6 +209,9 @@ export interface DashboardSummary {
   activeSavingsGoals: SavingsGoal[];
   recurringTotal: number;
   nonRecurringTotal: number;
+  prevMonthTotal: number;
+  prevMonthIncome: number;
+  prevMonthCategories: CategorySpending[];
 }
 
 export interface CategorySpending {

@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { MonthlyReport } from '@/types';
+import type { MonthlyReport, CategorySpending } from '@/types';
 import { reportsService } from '@/services/api/reportsService';
 
 export const useReportsStore = defineStore('reports', () => {
   const monthlyData = ref<MonthlyReport[]>([]);
+  const categoryBreakdown = ref<CategorySpending[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -24,7 +25,12 @@ export const useReportsStore = defineStore('reports', () => {
     loading.value = true;
     error.value = null;
     try {
-      monthlyData.value = await reportsService.getMonthlyComparison();
+      const [monthly, categories] = await Promise.all([
+        reportsService.getMonthlyComparison(),
+        reportsService.getCategoryBreakdown(),
+      ]);
+      monthlyData.value = monthly;
+      categoryBreakdown.value = categories;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load report data';
       console.error('Error fetching reports:', err);
@@ -35,6 +41,7 @@ export const useReportsStore = defineStore('reports', () => {
 
   return {
     monthlyData,
+    categoryBreakdown,
     loading,
     error,
     totalIncome,

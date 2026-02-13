@@ -178,6 +178,17 @@
       </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
+    <ConfirmModal
+      :visible="!!deletingId"
+      title="Delete Account?"
+      message="Linked transactions will lose their account reference. This action cannot be undone."
+      confirm-text="Delete"
+      icon="🗑️"
+      @confirm="confirmDelete"
+      @cancel="deletingId = null"
+    />
+
     <!-- Adjust Balance Modal -->
     <div v-if="adjustingAccount" class="modal-overlay" @click="closeAdjustModal">
       <div class="modal-content" @click.stop>
@@ -214,10 +225,13 @@
 import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAccountStore } from '@/stores/accountStore';
+import { useToast } from '@/composables/useToast';
+import ConfirmModal from '@/components/ConfirmModal.vue';
 import type { Account } from '@/types';
 import { AccountType } from '@/types';
 
 const accountStore = useAccountStore();
+const { showSuccess, showError } = useToast();
 
 const { accounts, loading, error, totalBalance, bankAccounts, eWallets, creditCards } = storeToRefs(accountStore);
 const { fetchAll, create, update, remove } = accountStore;
@@ -245,11 +259,11 @@ const formatLargeAmount = (amount: number): string => {
   const absAmount = Math.abs(amount);
   const sign = amount < 0 ? '-' : '';
   if (absAmount >= 1000000) {
-    return `${sign}P${(absAmount / 1000000).toFixed(2)}M`;
+    return `${sign}₱${(absAmount / 1000000).toFixed(2)}M`;
   } else if (absAmount >= 1000) {
-    return `${sign}P${(absAmount / 1000).toFixed(1)}K`;
+    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
   }
-  return `${sign}P${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 async function retryLoad() {
@@ -335,13 +349,22 @@ async function saveBalance() {
   }
 }
 
-async function deleteAccount(id: string) {
-  if (confirm('Are you sure you want to delete this account? Linked transactions will lose their account reference.')) {
-    try {
-      await remove(id);
-    } catch (err) {
-      console.error('Failed to delete account:', err);
-    }
+const deletingId = ref<string | null>(null);
+
+function deleteAccount(id: string) {
+  deletingId.value = id;
+}
+
+async function confirmDelete() {
+  if (!deletingId.value) return;
+  try {
+    await remove(deletingId.value);
+    showSuccess('Account deleted');
+  } catch (err) {
+    showError('Failed to delete account');
+    console.error('Failed to delete account:', err);
+  } finally {
+    deletingId.value = null;
   }
 }
 </script>

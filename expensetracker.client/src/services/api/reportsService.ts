@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { MonthlyReport } from '@/types';
+import type { MonthlyReport, CategorySpending } from '@/types';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -91,5 +91,50 @@ export const reportsService = {
     }
 
     return results;
+  },
+
+  async getCategoryBreakdown(): Promise<CategorySpending[]> {
+    const now = new Date();
+    const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const endOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
+
+    const { data, error } = await supabase
+      .from('Expenses')
+      .select('amount, category_id, Categories(name, icon, color)')
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth);
+
+    if (error) {
+      throw new Error(`Failed to fetch category breakdown: ${error.message}`);
+    }
+
+    const categoryMap = new Map<string, CategorySpending>();
+    const totalAmount = (data || []).reduce((sum, e) => sum + e.amount, 0);
+
+    for (const row of data || []) {
+      const catId = row.category_id;
+      const cat = row.Categories as any;
+      if (!categoryMap.has(catId)) {
+        categoryMap.set(catId, {
+          categoryId: catId,
+          categoryName: cat?.name || 'Unknown',
+          categoryIcon: cat?.icon || '',
+          categoryColor: cat?.color || '#6366f1',
+          totalAmount: 0,
+          count: 0,
+          percentage: 0,
+        });
+      }
+      const entry = categoryMap.get(catId)!;
+      entry.totalAmount += row.amount;
+      entry.count += 1;
+    }
+
+    return Array.from(categoryMap.values())
+      .map(cat => ({
+        ...cat,
+        percentage: totalAmount > 0 ? (cat.totalAmount / totalAmount) * 100 : 0,
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount);
   },
 };
