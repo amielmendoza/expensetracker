@@ -18,6 +18,27 @@
       <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
     </div>
 
+    <!-- Search & Filters -->
+    <div class="filter-bar">
+      <div class="filter-search">
+        <input
+          type="text"
+          v-model="searchTerm"
+          placeholder="Search expenses..."
+          @input="onSearchInput"
+        />
+      </div>
+      <div class="filter-category">
+        <select v-model="filterCategoryId" @change="onFilterChange">
+          <option value="">All Categories</option>
+          <option v-for="cat in expenseCategories" :key="cat.id" :value="cat.id">
+            {{ cat.icon }} {{ cat.name }}
+          </option>
+        </select>
+      </div>
+      <button v-if="hasActiveFilters" class="filter-clear" @click="onClearFilters">Clear</button>
+    </div>
+
     <!-- Summary Stats -->
     <div class="summary-row" v-if="expenses && expenses.length > 0">
       <div class="summary-stat">
@@ -199,15 +220,35 @@ import { useExpenseStore } from '@/stores/expenseStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
+import { useToast } from '@/composables/useToast';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
 const accountStore = useAccountStore();
+const { showSuccess, showError } = useToast();
 
-const { expenses, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(expenseStore);
-const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = expenseStore;
+const { expenses, loading, error, selectedMonthLabel, isCurrentMonth, searchTerm, filterCategoryId } = storeToRefs(expenseStore);
+const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth, clearFilters } = expenseStore;
+
+const hasActiveFilters = computed(() => searchTerm.value !== '' || filterCategoryId.value !== '');
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+function onSearchInput() {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetchSelectedMonth();
+  }, 300);
+}
+
+function onFilterChange() {
+  fetchSelectedMonth();
+}
+
+function onClearFilters() {
+  clearFilters();
+}
 
 const recurringExpenses = computed(() =>
   expenses.value?.filter(e => e.isMonthlyRecurring).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || []
@@ -308,12 +349,15 @@ async function saveExpense() {
   try {
     if (editingExpense.value) {
       await update(editingExpense.value.id, expenseForm);
+      showSuccess('Expense updated successfully');
     } else {
       await create(expenseForm);
+      showSuccess('Expense created successfully');
     }
     closeModal();
     await fetchSelectedMonth();
   } catch (err) {
+    showError('Failed to save expense');
     console.error('Failed to save expense:', err);
   }
 }
@@ -322,7 +366,9 @@ async function deleteExpense(id: string) {
   if (confirm('Are you sure you want to delete this expense?')) {
     try {
       await remove(id);
+      showSuccess('Expense deleted');
     } catch (err) {
+      showError('Failed to delete expense');
       console.error('Failed to delete expense:', err);
     }
   }
@@ -404,6 +450,61 @@ async function deleteExpense(id: string) {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.filter-search {
+  flex: 1;
+}
+
+.filter-search input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.filter-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.filter-category select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.filter-clear {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-clear:hover {
+  background: var(--danger);
+  color: white;
 }
 
 .month-nav-btn:disabled {

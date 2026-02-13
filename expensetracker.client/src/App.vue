@@ -83,12 +83,14 @@
       </div>
       <QuickAddExpense />
     </main>
+    <ToastContainer />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import QuickAddExpense from '@/components/QuickAddExpense.vue';
+import ToastContainer from '@/components/ToastContainer.vue';
 
 const mobileMenuOpen = ref(false);
 

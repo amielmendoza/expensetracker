@@ -9,6 +9,10 @@ export const useIncomeStore = defineStore('income', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
+  // Filter state
+  const searchTerm = ref('');
+  const filterCategoryId = ref('');
+
   // Selected month state (defaults to current month)
   const now = new Date();
   const selectedYear = ref(now.getFullYear());
@@ -181,10 +185,20 @@ export const useIncomeStore = defineStore('income', () => {
       return `${y}-${m}-${d}`;
     };
 
-    await fetchAll({
+    const filter: IncomeFilter = {
       startDate: formatLocalDate(startDate),
       endDate: formatLocalDate(endDate),
-    });
+    };
+    if (searchTerm.value) filter.searchTerm = searchTerm.value;
+    if (filterCategoryId.value) filter.categoryId = filterCategoryId.value;
+
+    await fetchAll(filter);
+  }
+
+  function clearFilters() {
+    searchTerm.value = '';
+    filterCategoryId.value = '';
+    fetchSelectedMonth();
   }
 
   function goToPreviousMonth() {
@@ -222,6 +236,8 @@ export const useIncomeStore = defineStore('income', () => {
     incomes,
     loading,
     error,
+    searchTerm,
+    filterCategoryId,
     selectedYear,
     selectedMonth,
     selectedMonthLabel,
@@ -237,6 +253,7 @@ export const useIncomeStore = defineStore('income', () => {
     goToPreviousMonth,
     goToNextMonth,
     goToCurrentMonth,
+    clearFilters,
     create,
     update,
     remove,

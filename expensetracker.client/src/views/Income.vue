@@ -18,6 +18,27 @@
       <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
     </div>
 
+    <!-- Search & Filters -->
+    <div class="filter-bar">
+      <div class="filter-search">
+        <input
+          type="text"
+          v-model="searchTerm"
+          placeholder="Search income..."
+          @input="onSearchInput"
+        />
+      </div>
+      <div class="filter-category">
+        <select v-model="filterCategoryId" @change="onFilterChange">
+          <option value="">All Categories</option>
+          <option v-for="cat in incomeCategories" :key="cat.id" :value="cat.id">
+            {{ cat.icon }} {{ cat.name }}
+          </option>
+        </select>
+      </div>
+      <button v-if="hasActiveFilters" class="filter-clear" @click="onClearFilters">Clear</button>
+    </div>
+
     <!-- Summary Stats -->
     <div class="summary-row" v-if="incomes && incomes.length > 0">
       <div class="summary-stat">
@@ -166,15 +187,35 @@ import { useIncomeStore } from '@/stores/incomeStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
+import { useToast } from '@/composables/useToast';
 import type { Income } from '@/types';
 import { IncomeSource, CategoryType } from '@/types';
 
 const incomeStore = useIncomeStore();
 const categoryStore = useCategoryStore();
 const accountStore = useAccountStore();
+const { showSuccess, showError } = useToast();
 
-const { incomes, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(incomeStore);
-const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = incomeStore;
+const { incomes, loading, error, selectedMonthLabel, isCurrentMonth, searchTerm, filterCategoryId } = storeToRefs(incomeStore);
+const { fetchSelectedMonth, create, update, remove, goToPreviousMonth, goToNextMonth, goToCurrentMonth, clearFilters } = incomeStore;
+
+const hasActiveFilters = computed(() => searchTerm.value !== '' || filterCategoryId.value !== '');
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+function onSearchInput() {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetchSelectedMonth();
+  }, 300);
+}
+
+function onFilterChange() {
+  fetchSelectedMonth();
+}
+
+function onClearFilters() {
+  clearFilters();
+}
 
 const { categories } = storeToRefs(categoryStore);
 const { fetchAll: fetchCategories } = categoryStore;
@@ -280,12 +321,15 @@ async function saveIncome() {
   try {
     if (editingIncome.value) {
       await update(editingIncome.value.id, incomeForm);
+      showSuccess('Income updated successfully');
     } else {
       await create(incomeForm);
+      showSuccess('Income created successfully');
     }
     closeModal();
     await fetchSelectedMonth();
   } catch (err) {
+    showError('Failed to save income');
     console.error('Failed to save income:', err);
   }
 }
@@ -294,7 +338,9 @@ async function deleteIncome(id: string) {
   if (confirm('Are you sure you want to delete this income entry?')) {
     try {
       await remove(id);
+      showSuccess('Income deleted');
     } catch (err) {
+      showError('Failed to delete income');
       console.error('Failed to delete income:', err);
     }
   }
@@ -356,6 +402,61 @@ async function deleteIncome(id: string) {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.filter-search {
+  flex: 1;
+}
+
+.filter-search input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.filter-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.filter-category select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.filter-clear {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-clear:hover {
+  background: var(--danger);
+  color: white;
 }
 
 .month-nav-btn:disabled {

@@ -9,6 +9,10 @@ export const useExpenseStore = defineStore('expense', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
+  // Filter state
+  const searchTerm = ref('');
+  const filterCategoryId = ref('');
+
   // Selected month state (defaults to current month)
   const now = new Date();
   const selectedYear = ref(now.getFullYear());
@@ -180,10 +184,20 @@ export const useExpenseStore = defineStore('expense', () => {
       return `${y}-${m}-${d}`;
     };
 
-    await fetchAll({
+    const filter: ExpenseFilter = {
       startDate: formatLocalDate(startDate),
       endDate: formatLocalDate(endDate),
-    });
+    };
+    if (searchTerm.value) filter.searchTerm = searchTerm.value;
+    if (filterCategoryId.value) filter.categoryId = filterCategoryId.value;
+
+    await fetchAll(filter);
+  }
+
+  function clearFilters() {
+    searchTerm.value = '';
+    filterCategoryId.value = '';
+    fetchSelectedMonth();
   }
 
   function goToPreviousMonth() {
@@ -222,6 +236,8 @@ export const useExpenseStore = defineStore('expense', () => {
     expenses,
     loading,
     error,
+    searchTerm,
+    filterCategoryId,
     selectedYear,
     selectedMonth,
     selectedMonthLabel,
@@ -236,6 +252,7 @@ export const useExpenseStore = defineStore('expense', () => {
     goToPreviousMonth,
     goToNextMonth,
     goToCurrentMonth,
+    clearFilters,
     create,
     update,
     remove,

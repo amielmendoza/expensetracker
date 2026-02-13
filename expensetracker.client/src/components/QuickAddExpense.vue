@@ -94,11 +94,13 @@ import { useExpenseStore } from '@/stores/expenseStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { getTodayDateString } from '@/utils/dateUtils';
+import { useToast } from '@/composables/useToast';
 import { PaymentMethod } from '@/types';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
 const accountStore = useAccountStore();
+const { showSuccess, showError } = useToast();
 
 const { expenses } = storeToRefs(expenseStore);
 const { create } = expenseStore;
@@ -168,8 +170,10 @@ async function saveExpense() {
 
   try {
     await create(form);
+    showSuccess('Expense created successfully');
     closeModal();
   } catch (err) {
+    showError('Failed to create expense');
     console.error('Failed to create expense:', err);
   }
 }
