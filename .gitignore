@@ -220,6 +220,10 @@ nul
 # Frontend build output (generated during build)
 ExpenseTracker.Server/wwwroot/
 
+# Capacitor native platforms (regenerate with `npx cap add android/ios`)
+expensetracker.client/android/
+expensetracker.client/ios/
+
 
 
 
