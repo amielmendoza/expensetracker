@@ -32,8 +32,11 @@ if (supabaseAnonKey.includes('your-anon-key')) {
 // You can add type parameter later: createClient<Database>(supabaseUrl, supabaseAnonKey)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false,  // Disable session persistence to avoid lock issues
-    autoRefreshToken: false,
-    detectSessionInUrl: false
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    lock: async (name: string, acquireTimeout: number, fn: () => Promise<any>) => {
+      return await fn();
+    },
   }
 });

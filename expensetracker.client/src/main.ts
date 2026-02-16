@@ -4,8 +4,10 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/authStore'
 
 const app = createApp(App)
+const pinia = createPinia()
 
 // Global error handler to catch unhandled promise rejections
 app.config.errorHandler = (err, instance, info) => {
@@ -19,7 +21,11 @@ window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault() // Prevent the error from being logged to console
 })
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 
-app.mount('#app')
+// Initialize auth before mounting to restore session on page refresh
+const authStore = useAuthStore()
+authStore.initialize().then(() => {
+  app.mount('#app')
+})

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { watch } from 'vue';
 import Dashboard from '@/views/Dashboard.vue';
 import Expenses from '@/views/Expenses.vue';
 import Income from '@/views/Income.vue';
@@ -6,10 +7,18 @@ import Accounts from '@/views/Accounts.vue';
 import Reports from '@/views/Reports.vue';
 import Categories from '@/views/Categories.vue';
 import SavingsGoals from '@/views/SavingsGoals.vue';
+import Login from '@/views/Login.vue';
+import { useAuthStore } from '@/stores/authStore';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: Login,
+      meta: { public: true },
+    },
     {
       path: '/',
       name: 'dashboard',
@@ -48,8 +57,25 @@ const router = createRouter({
   ],
 });
 
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore();
+
+  // Wait for initial session check to complete
+  if (authStore.loading) {
+    await new Promise<void>((resolve) => {
+      const unwatch = watch(() => authStore.loading, (val) => {
+        if (!val) { unwatch(); resolve(); }
+      }, { immediate: true });
+    });
+  }
+
+  if (!to.meta?.public && !authStore.isAuthenticated) {
+    return { name: 'login' };
+  }
+
+  if (to.name === 'login' && authStore.isAuthenticated) {
+    return { name: 'dashboard' };
+  }
+});
+
 export default router;
-
-
-
-

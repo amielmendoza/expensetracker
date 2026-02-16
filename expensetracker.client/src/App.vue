@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <nav class="navbar">
+    <nav class="navbar" v-if="authStore.isAuthenticated">
       <div class="nav-container">
         <router-link to="/" class="nav-logo">
           <span class="logo-icon">
@@ -74,9 +74,19 @@
             </svg>
             <span class="nav-text">Categories</span>
           </router-link>
+        </div>
+
+        <div class="nav-right">
           <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
             <span v-if="isDark">☀️</span>
             <span v-else>🌙</span>
+          </button>
+          <button class="logout-btn" @click="handleLogout" :title="'Sign out (' + authStore.userEmail + ')'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
           </button>
         </div>
       </div>
@@ -85,8 +95,8 @@
       <div class="page-container">
         <router-view />
       </div>
-      <QuickAddExpense />
-      <QuickAddIncome />
+      <QuickAddExpense v-if="authStore.isAuthenticated" />
+      <QuickAddIncome v-if="authStore.isAuthenticated" />
     </main>
     <ToastContainer />
   </div>
@@ -94,12 +104,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import QuickAddExpense from '@/components/QuickAddExpense.vue';
 import QuickAddIncome from '@/components/QuickAddIncome.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
+import { useAuthStore } from '@/stores/authStore';
 
+const authStore = useAuthStore();
+const router = useRouter();
 const mobileMenuOpen = ref(false);
 const isDark = ref(false);
+
+const handleLogout = async () => {
+  await authStore.signOut();
+  router.push('/login');
+};
 
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value;
@@ -213,8 +232,7 @@ body {
   padding: 0.875rem 2rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .nav-logo {
@@ -287,14 +305,23 @@ body {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .nav-link {
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.9rem;
-  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 8px;
   transition: all 0.2s ease;
   display: flex;
@@ -338,6 +365,26 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.logout-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
 /* Mobile responsive */
 @media (max-width: 900px) {
   .nav-container {
@@ -365,6 +412,10 @@ body {
 
   .mobile-menu-btn {
     display: flex;
+  }
+
+  .nav-right {
+    margin-left: auto;
   }
 
   .nav-links {

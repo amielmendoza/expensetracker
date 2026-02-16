@@ -259,7 +259,7 @@ const budgetItems = computed(() => {
   return summary.value.prevMonthCategories
     .slice(0, 5)
     .map(prev => {
-      const current = summary.value!.topCategories.find(c => c.categoryId === prev.categoryId);
+      const current = summary.value!.allCategorySpending.find(c => c.categoryId === prev.categoryId);
       const currentAmount = current?.totalAmount || 0;
       const budget = prev.totalAmount;
       const usedPercent = budget > 0 ? (currentAmount / budget) * 100 : 0;

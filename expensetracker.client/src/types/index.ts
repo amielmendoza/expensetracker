@@ -191,6 +191,7 @@ export interface DashboardSummary {
   thisMonthAverage: number;
   daysRemainingInMonth: number;
   topCategories: CategorySpending[];
+  allCategorySpending: CategorySpending[];
   recentExpenses: Expense[];
   todayIncome: number;
   todayIncomeCount: number;

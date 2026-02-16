@@ -119,13 +119,14 @@ export const dashboardService = {
       category.count += 1;
     });
 
-    const topCategories = Array.from(categoryMap.values())
+    const allCategorySpending = Array.from(categoryMap.values())
       .map(cat => ({
         ...cat,
         percentage: thisMonthTotal > 0 ? (cat.totalAmount / thisMonthTotal) * 100 : 0,
       }))
-      .sort((a, b) => b.totalAmount - a.totalAmount)
-      .slice(0, 5);
+      .sort((a, b) => b.totalAmount - a.totalAmount);
+
+    const topCategories = allCategorySpending.slice(0, 5);
 
     // Fetch recent expenses for selected month
     const { data: recentExpensesData, error: recentError } = await supabase
@@ -261,6 +262,7 @@ export const dashboardService = {
       thisMonthAverage,
       daysRemainingInMonth: daysRemaining,
       topCategories,
+      allCategorySpending,
       recentExpenses,
       todayIncome,
       todayIncomeCount,
