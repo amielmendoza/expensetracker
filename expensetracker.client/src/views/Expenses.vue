@@ -75,47 +75,40 @@
         <p>Add your first expense to get started tracking your spending!</p>
         <button @click="openAddModal" class="btn-add">+ Add Your First Expense</button>
       </div>
-      <div v-else class="sections-container">
-        <!-- Recurring Expenses -->
-        <div class="card" v-if="recurringExpenses.length > 0">
-          <div class="card-title">
-            <h2>🔄 Monthly Recurring</h2>
-            <span class="badge">{{ recurringExpenses.length }}</span>
-          </div>
-          <div class="transactions-list">
-            <div
-              v-for="expense in recurringExpenses"
-              :key="expense.id"
-              class="transaction-item"
-            >
-              <div class="transaction-icon" :style="{ backgroundColor: expense.categoryColor }">
-                {{ expense.categoryIcon }}
-              </div>
-              <div class="transaction-info">
-                <div class="transaction-name">{{ expense.description }}</div>
-                <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}{{ expense.accountName ? ' • ' + expense.accountName : '' }}</div>
-              </div>
-              <div class="transaction-amount expense">-{{ formatLargeAmount(expense.amount) }}</div>
-              <div class="transaction-actions">
-                <button @click="editExpense(expense)" class="btn-icon" title="Edit">✏️</button>
-                <button @click="deleteExpense(expense.id)" class="btn-icon delete" title="Delete">🗑️</button>
-              </div>
-            </div>
-          </div>
+      <div v-else>
+        <!-- Tabs -->
+        <div class="expense-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'all' }"
+            @click="activeTab = 'all'"
+          >
+            All <span class="tab-count">{{ expenses.length }}</span>
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'recurring' }"
+            @click="activeTab = 'recurring'"
+          >
+            Recurring <span class="tab-count">{{ recurringExpenses.length }}</span>
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'onetime' }"
+            @click="activeTab = 'onetime'"
+          >
+            One-time <span class="tab-count">{{ oneTimeExpenses.length }}</span>
+          </button>
         </div>
 
-        <!-- One-time Expenses -->
+        <!-- Expense List -->
         <div class="card">
-          <div class="card-title">
-            <h2>📝 One-time Expenses</h2>
-            <span class="badge">{{ oneTimeExpenses.length }}</span>
-          </div>
-          <div v-if="oneTimeExpenses.length === 0" class="empty-section">
-            No one-time expenses this month
+          <div v-if="displayedExpenses.length === 0" class="empty-section">
+            No {{ activeTab === 'recurring' ? 'recurring' : 'one-time' }} expenses this month
           </div>
           <div v-else class="transactions-list">
             <div
-              v-for="expense in oneTimeExpenses"
+              v-for="expense in displayedExpenses"
               :key="expense.id"
               class="transaction-item"
             >
@@ -123,7 +116,10 @@
                 {{ expense.categoryIcon }}
               </div>
               <div class="transaction-info">
-                <div class="transaction-name">{{ expense.description }}</div>
+                <div class="transaction-name">
+                  {{ expense.description }}
+                  <span v-if="activeTab === 'all' && expense.isMonthlyRecurring" class="recurring-badge">recurring</span>
+                </div>
                 <div class="transaction-meta">{{ expense.categoryName }} • {{ formatDate(expense.date) }}{{ expense.accountName ? ' • ' + expense.accountName : '' }}</div>
               </div>
               <div class="transaction-amount expense">-{{ formatLargeAmount(expense.amount) }}</div>
@@ -285,6 +281,14 @@ const { fetchAll: fetchAccounts } = accountStore;
 const expenseCategories = computed(() =>
   categories.value?.filter(c => c.type === CategoryType.Expense || c.type === CategoryType.Both) || []
 );
+
+const activeTab = ref<'all' | 'recurring' | 'onetime'>('all');
+
+const displayedExpenses = computed(() => {
+  if (activeTab.value === 'recurring') return recurringExpenses.value;
+  if (activeTab.value === 'onetime') return oneTimeExpenses.value;
+  return [...(expenses.value || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+});
 
 const showAddModal = ref(false);
 const editingExpense = ref<Expense | null>(null);
@@ -624,6 +628,71 @@ async function confirmDelete() {
 
 .stat-value.expense {
   color: #ef4444;
+}
+
+/* Tabs */
+.expense-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.25rem;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.tab-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.tab-btn:not(.active) .tab-count {
+  background: var(--border);
+  color: var(--text-secondary);
+}
+
+.recurring-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Card */
