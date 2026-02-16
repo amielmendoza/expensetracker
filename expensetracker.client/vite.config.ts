@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
 import plugin from '@vitejs/plugin-vue';
+import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 import path from 'path';
 import child_process from 'child_process';
@@ -57,7 +58,53 @@ const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_H
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [plugin()],
+    plugins: [
+        plugin(),
+        VitePWA({
+            registerType: 'autoUpdate',
+            includeAssets: ['favicon.ico', 'icon-192x192.svg'],
+            manifest: {
+                name: 'ExpenseTracker',
+                short_name: 'ExpenseTracker',
+                description: 'Track your expenses and income',
+                theme_color: '#1a1d29',
+                background_color: '#f8fafc',
+                display: 'standalone',
+                scope: '/',
+                start_url: '/',
+                icons: [
+                    {
+                        src: 'icon-192x192.svg',
+                        sizes: '192x192',
+                        type: 'image/svg+xml',
+                        purpose: 'any',
+                    },
+                    {
+                        src: 'icon-192x192.svg',
+                        sizes: '512x512',
+                        type: 'image/svg+xml',
+                        purpose: 'maskable',
+                    },
+                ],
+            },
+            workbox: {
+                globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+                runtimeCaching: [
+                    {
+                        urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'supabase-api',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 300,
+                            },
+                        },
+                    },
+                ],
+            },
+        }),
+    ],
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))

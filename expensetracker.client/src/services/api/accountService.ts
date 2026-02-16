@@ -128,9 +128,14 @@ export const accountService = {
     const fromAccount = await this.getById(fromId);
     const toAccount = await this.getById(toId);
 
+    // From account: CreditCard = increases debt (+), others = deducts (-)
+    const fromDelta = fromAccount.type === AccountType.CreditCard ? amount : -amount;
+    // To account: CreditCard = paying off debt (-), others = adds (+)
+    const toDelta = toAccount.type === AccountType.CreditCard ? -amount : amount;
+
     await Promise.all([
-      this.update(fromId, { balance: fromAccount.balance - amount }),
-      this.update(toId, { balance: toAccount.balance + amount }),
+      this.update(fromId, { balance: fromAccount.balance + fromDelta }),
+      this.update(toId, { balance: toAccount.balance + toDelta }),
     ]);
   },
 

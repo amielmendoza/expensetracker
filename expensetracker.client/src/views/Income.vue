@@ -109,7 +109,7 @@
     />
 
     <!-- Add/Edit Modal -->
-    <div v-if="showAddModal || editingIncome" class="modal-overlay" @click="closeModal">
+    <div v-if="showAddModal || editingIncome" class="modal-overlay" @mousedown.self="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>{{ editingIncome ? 'Edit Income' : 'Add Income' }}</h2>

@@ -126,7 +126,7 @@
     </div>
 
     <!-- Add/Edit Modal -->
-    <div v-if="showAddModal || editingAccount" class="modal-overlay" @click="closeModal">
+    <div v-if="showAddModal || editingAccount" class="modal-overlay" @mousedown.self="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>{{ editingAccount ? 'Edit Account' : 'Add Account' }}</h2>
@@ -191,7 +191,7 @@
     />
 
     <!-- Adjust Balance Modal -->
-    <div v-if="adjustingAccount" class="modal-overlay" @click="closeAdjustModal">
+    <div v-if="adjustingAccount" class="modal-overlay" @mousedown.self="closeAdjustModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>Adjust Balance - {{ adjustingAccount.name }}</h2>
@@ -220,7 +220,7 @@
       </div>
     </div>
     <!-- Transfer Modal -->
-    <div v-if="showTransferModal" class="modal-overlay" @click="closeTransferModal">
+    <div v-if="showTransferModal" class="modal-overlay" @mousedown.self="closeTransferModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>Transfer Between Accounts</h2>

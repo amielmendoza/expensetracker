@@ -111,7 +111,7 @@
     </div>
 
     <!-- Add/Edit Modal -->
-    <div v-if="showAddModal || editingGoal" class="modal-overlay" @click="closeModal">
+    <div v-if="showAddModal || editingGoal" class="modal-overlay" @mousedown.self="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>{{ editingGoal ? 'Edit Goal' : 'Create Goal' }}</h2>
