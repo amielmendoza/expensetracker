@@ -124,6 +124,16 @@ export const accountService = {
     return this.update(id, { balance: account.balance + delta });
   },
 
+  async transfer(fromId: string, toId: string, amount: number): Promise<void> {
+    const fromAccount = await this.getById(fromId);
+    const toAccount = await this.getById(toId);
+
+    await Promise.all([
+      this.update(fromId, { balance: fromAccount.balance - amount }),
+      this.update(toId, { balance: toAccount.balance + amount }),
+    ]);
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('Accounts')

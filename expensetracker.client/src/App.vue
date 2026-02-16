@@ -74,6 +74,10 @@
             </svg>
             <span class="nav-text">Categories</span>
           </router-link>
+          <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+            <span v-if="isDark">☀️</span>
+            <span v-else>🌙</span>
+          </button>
         </div>
       </div>
     </nav>
@@ -82,17 +86,20 @@
         <router-view />
       </div>
       <QuickAddExpense />
+      <QuickAddIncome />
     </main>
     <ToastContainer />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import QuickAddExpense from '@/components/QuickAddExpense.vue';
+import QuickAddIncome from '@/components/QuickAddIncome.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
 
 const mobileMenuOpen = ref(false);
+const isDark = ref(false);
 
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value;
@@ -101,6 +108,20 @@ const toggleMobileMenu = () => {
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false;
 };
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value;
+  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light');
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+};
+
+onMounted(() => {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') {
+    isDark.value = true;
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+});
 </script>
 
 <style>
@@ -110,7 +131,7 @@ const closeMobileMenu = () => {
   box-sizing: border-box;
 }
 
-:root {
+:root, [data-theme="light"] {
   --primary: #6366f1;
   --primary-dark: #4f46e5;
   --primary-light: #818cf8;
@@ -130,6 +151,38 @@ const closeMobileMenu = () => {
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
+}
+
+[data-theme="dark"] {
+  --primary: #818cf8;
+  --primary-dark: #6366f1;
+  --primary-light: #a5b4fc;
+  --secondary: #a78bfa;
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border: #334155;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .main-content {
+  background: var(--bg-primary);
+}
+
+[data-theme="dark"] .navbar {
+  background: #0d1117;
 }
 
 body {
@@ -264,6 +317,25 @@ body {
   color: white;
   background: #22c55e;
   font-weight: 600;
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Mobile responsive */

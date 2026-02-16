@@ -6,6 +6,7 @@
         <h1>Expenses</h1>
       </div>
       <div class="header-right">
+        <button class="btn-export" @click="exportCSV" v-if="expenses && expenses.length > 0" title="Export CSV">CSV</button>
         <button class="btn-add" @click="openAddModal">+ Add Expense</button>
       </div>
     </div>
@@ -233,6 +234,7 @@ import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import { useToast } from '@/composables/useToast';
 import ConfirmModal from '@/components/ConfirmModal.vue';
+import { downloadCSV } from '@/utils/exportUtils';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
 
@@ -374,6 +376,21 @@ async function saveExpense() {
   }
 }
 
+function exportCSV() {
+  if (!expenses.value || expenses.value.length === 0) return;
+  const data = expenses.value.map(e => ({
+    Date: e.date.split('T')[0],
+    Description: e.description,
+    Amount: e.amount,
+    Category: e.categoryName,
+    Account: e.accountName || 'Cash',
+    Recurring: e.isMonthlyRecurring ? 'Yes' : 'No',
+    Notes: e.notes || '',
+  }));
+  downloadCSV(data, `expenses-${selectedMonthLabel.value.replace(' ', '-')}.csv`);
+  showSuccess('Expenses exported');
+}
+
 const deletingId = ref<string | null>(null);
 
 function deleteExpense(id: string) {
@@ -440,6 +457,24 @@ async function confirmDelete() {
 .btn-add:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+}
+
+.btn-export {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-export:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 /* Month Selector */

@@ -63,13 +63,6 @@ export enum BudgetPeriod {
   Yearly = 3
 }
 
-export enum RecurringFrequency {
-  Daily = 0,
-  Weekly = 1,
-  Monthly = 2,
-  Yearly = 3
-}
-
 export interface Expense {
   id: string;
   amount: number;
@@ -222,64 +215,6 @@ export interface CategorySpending {
   totalAmount: number;
   count: number;
   percentage: number;
-}
-
-export interface Budget {
-  id: string;
-  categoryId: string | null;
-  amount: number;
-  period: BudgetPeriod;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
-export interface CreateBudget {
-  categoryId?: string | null;
-  amount: number;
-  period: BudgetPeriod;
-  startDate: string;
-  endDate: string;
-  isActive?: boolean;
-}
-
-export interface UpdateBudget {
-  categoryId?: string | null;
-  amount?: number;
-  period?: BudgetPeriod;
-  startDate?: string;
-  endDate?: string;
-  isActive?: boolean;
-}
-
-export interface RecurringExpense {
-  id: string;
-  description: string;
-  amount: number;
-  categoryId: string;
-  frequency: RecurringFrequency;
-  nextDueDate: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
-export interface CreateRecurringExpense {
-  description: string;
-  amount: number;
-  categoryId: string;
-  frequency: RecurringFrequency;
-  nextDueDate: string;
-  isActive?: boolean;
-}
-
-export interface UpdateRecurringExpense {
-  description?: string;
-  amount?: number;
-  categoryId?: string;
-  frequency?: RecurringFrequency;
-  nextDueDate?: string;
-  isActive?: boolean;
 }
 
 export interface SavingsGoal {

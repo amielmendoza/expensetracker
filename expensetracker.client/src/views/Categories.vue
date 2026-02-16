@@ -74,6 +74,17 @@
       </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
+    <ConfirmModal
+      :visible="!!deletingId"
+      title="Delete Category?"
+      message="Transactions using this category may be affected. This action cannot be undone."
+      confirm-text="Delete"
+      icon="🗑️"
+      @confirm="confirmDelete"
+      @cancel="deletingId = null"
+    />
+
     <!-- Add/Edit Modal -->
     <div v-if="showAddModal || editingCategory" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
@@ -91,30 +102,32 @@
               required
             />
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Icon *</label>
-              <div class="icon-picker">
-                <input
-                  v-model="categoryForm.icon"
-                  type="text"
-                  placeholder="🍔"
-                  maxlength="4"
-                  required
-                />
-                <div class="icon-suggestions">
-                  <button
-                    v-for="icon in suggestedIcons"
-                    :key="icon"
-                    type="button"
-                    class="icon-btn"
-                    @click="categoryForm.icon = icon"
-                  >
-                    {{ icon }}
-                  </button>
+          <div class="form-group">
+            <label>Icon *</label>
+            <div class="icon-picker">
+              <div class="icon-preview" :class="{ empty: !categoryForm.icon }">
+                {{ categoryForm.icon || '?' }}
+              </div>
+              <div class="icon-picker-grid">
+                <div v-for="(icons, group) in iconGroups" :key="group" class="icon-group">
+                  <div class="icon-group-label">{{ group }}</div>
+                  <div class="icon-group-icons">
+                    <button
+                      v-for="icon in icons"
+                      :key="icon"
+                      type="button"
+                      class="icon-btn"
+                      :class="{ selected: categoryForm.icon === icon }"
+                      @click="categoryForm.icon = icon"
+                    >
+                      {{ icon }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
               <label>Color *</label>
               <div class="color-picker">
@@ -135,14 +148,14 @@
                 </div>
               </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label>Type *</label>
-            <select v-model.number="categoryForm.type" required>
-              <option :value="0">Expense</option>
-              <option :value="1">Income</option>
-              <option :value="2">Both</option>
-            </select>
+            <div class="form-group">
+              <label>Type *</label>
+              <select v-model.number="categoryForm.type" required>
+                <option :value="0">Expense</option>
+                <option :value="1">Income</option>
+                <option :value="2">Both</option>
+              </select>
+            </div>
           </div>
           <div class="form-actions">
             <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
@@ -158,10 +171,13 @@
 import { ref, onMounted, reactive, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useToast } from '@/composables/useToast';
+import ConfirmModal from '@/components/ConfirmModal.vue';
 import type { Category } from '@/types';
 import { CategoryType } from '@/types';
 
 const categoryStore = useCategoryStore();
+const { showSuccess, showError } = useToast();
 
 const { categories, loading, error } = storeToRefs(categoryStore);
 const { fetchAll, create, update, remove } = categoryStore;
@@ -187,7 +203,19 @@ const categoryForm = reactive({
   type: CategoryType.Expense,
 });
 
-const suggestedIcons = ['🍔', '🚗', '🏠', '💡', '🎬', '🛒', '💼', '💰', '🎁', '✈️', '🏥', '📱'];
+const iconGroups: Record<string, string[]> = {
+  'Food & Drink': ['🍔', '🍕', '🍜', '🍣', '🥗', '🍰', '☕', '🍺', '🥤', '🍳'],
+  'Transport': ['🚗', '🚌', '🚇', '✈️', '⛽', '🚲', '🛵', '🚕', '🚁', '🛳️'],
+  'Home': ['🏠', '🛋️', '🔧', '🧹', '💡', '🚿', '🏗️', '🪴'],
+  'Shopping': ['🛒', '👕', '👟', '💄', '🎁', '🛍️', '💎', '🕶️'],
+  'Health': ['🏥', '💊', '🏋️', '🧘', '🦷', '👁️', '🩺', '💉'],
+  'Entertainment': ['🎬', '🎮', '🎵', '📚', '🎨', '🎭', '🎯', '🎳'],
+  'Finance': ['💰', '💳', '🏦', '📈', '💵', '🧾', '💸', '🪙'],
+  'Work': ['💼', '💻', '📱', '📧', '🖨️', '📊', '🗂️', '✏️'],
+  'Education': ['🎓', '📖', '🔬', '🧪', '📐', '🌐', '🧠', '📝'],
+  'Pets & Nature': ['🐱', '🐶', '🐟', '🌳', '🌸', '🐾', '🦜', '🐰'],
+  'Other': ['⭐', '❤️', '🔔', '📌', '🏷️', '🎉', '🔑', '📦'],
+};
 const presetColors = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 function getTypeLabel(type: CategoryType): string {
@@ -249,22 +277,34 @@ async function saveCategory() {
   try {
     if (editingCategory.value) {
       await update(editingCategory.value.id, categoryForm);
+      showSuccess('Category updated');
     } else {
       await create(categoryForm);
+      showSuccess('Category created');
     }
     closeModal();
   } catch (err) {
+    showError('Failed to save category');
     console.error('Failed to save category:', err);
   }
 }
 
-async function deleteCategory(id: string) {
-  if (confirm('Are you sure you want to delete this category?')) {
-    try {
-      await remove(id);
-    } catch (err) {
-      console.error('Failed to delete category:', err);
-    }
+const deletingId = ref<string | null>(null);
+
+function deleteCategory(id: string) {
+  deletingId.value = id;
+}
+
+async function confirmDelete() {
+  if (!deletingId.value) return;
+  try {
+    await remove(deletingId.value);
+    showSuccess('Category deleted');
+  } catch (err) {
+    showError('Failed to delete category');
+    console.error('Failed to delete category:', err);
+  } finally {
+    deletingId.value = null;
   }
 }
 </script>
@@ -620,32 +660,85 @@ form {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.icon-picker input {
-  text-align: center;
-  font-size: 1.5rem;
-  padding: 0.5rem;
+.icon-picker {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
 }
 
-.icon-suggestions {
+.icon-preview {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.icon-preview.empty {
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+}
+
+.icon-picker-grid {
+  flex: 1;
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  background: var(--bg-primary);
+}
+
+.icon-group {
+  margin-bottom: 0.5rem;
+}
+
+.icon-group:last-child {
+  margin-bottom: 0;
+}
+
+.icon-group-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.25rem 0.25rem;
+}
+
+.icon-group-icons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-top: 0.5rem;
 }
 
 .icon-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border);
-  background: var(--bg-primary);
-  border-radius: 6px;
-  font-size: 1rem;
+  width: 36px;
+  height: 36px;
+  border: 2px solid transparent;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 1.15rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:hover {
   background: var(--border);
+  transform: scale(1.1);
+}
+
+.icon-btn.selected {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.1);
   transform: scale(1.1);
 }
 

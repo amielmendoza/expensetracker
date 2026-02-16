@@ -7,6 +7,19 @@
       </div>
     </div>
 
+    <!-- Date Range Filter -->
+    <div class="date-range-bar">
+      <div class="date-input">
+        <label>From</label>
+        <input type="month" v-model="startMonth" @change="onDateChange" />
+      </div>
+      <div class="date-input">
+        <label>To</label>
+        <input type="month" v-model="endMonth" @change="onDateChange" />
+      </div>
+      <button v-if="hasDateFilter" class="filter-clear" @click="clearDateFilter">Clear</button>
+    </div>
+
     <div v-if="loading" class="loading">
       <div class="loading-spinner"></div>
       <p>Loading report data...</p>
@@ -17,25 +30,25 @@
     </div>
     <div v-else>
       <!-- Summary Stats -->
-      <div class="summary-row" v-if="monthlyData.length > 0">
+      <div class="summary-row" v-if="filteredMonthlyData.length > 0">
         <div class="summary-stat">
           <span class="stat-label">Total Income</span>
-          <span class="stat-value income">{{ formatLargeAmount(totalIncome) }}</span>
+          <span class="stat-value income">{{ formatLargeAmount(filteredTotalIncome) }}</span>
         </div>
         <div class="summary-stat">
           <span class="stat-label">Total Expenses</span>
-          <span class="stat-value expense">{{ formatLargeAmount(totalExpenses) }}</span>
+          <span class="stat-value expense">{{ formatLargeAmount(filteredTotalExpenses) }}</span>
         </div>
         <div class="summary-stat">
           <span class="stat-label">Net Savings</span>
-          <span class="stat-value" :class="totalNet >= 0 ? 'income' : 'expense'">
-            {{ totalNet >= 0 ? '+' : '' }}{{ formatLargeAmount(totalNet) }}
+          <span class="stat-value" :class="filteredTotalNet >= 0 ? 'income' : 'expense'">
+            {{ filteredTotalNet >= 0 ? '+' : '' }}{{ formatLargeAmount(filteredTotalNet) }}
           </span>
         </div>
       </div>
 
       <!-- Chart -->
-      <div class="card" v-if="monthlyData.length > 0">
+      <div class="card" v-if="filteredMonthlyData.length > 0">
         <h2 class="card-title">Monthly Comparison</h2>
         <div class="chart-container">
           <Bar :data="chartData" :options="chartOptions" />
@@ -51,7 +64,7 @@
       </div>
 
       <!-- Detail Table -->
-      <div class="card" v-if="monthlyData.length > 0">
+      <div class="card" v-if="filteredMonthlyData.length > 0">
         <h2 class="card-title">Monthly Breakdown</h2>
         <div class="table-wrapper">
           <table class="report-table">
@@ -64,7 +77,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in monthlyData" :key="`${row.year}-${row.month}`">
+              <tr v-for="row in filteredMonthlyData" :key="`${row.year}-${row.month}`">
                 <td>{{ row.month }} {{ row.year }}</td>
                 <td class="text-right income">{{ formatLargeAmount(row.income) }}</td>
                 <td class="text-right expense">{{ formatLargeAmount(row.expenses) }}</td>
@@ -77,7 +90,7 @@
         </div>
       </div>
 
-      <div v-if="monthlyData.length === 0" class="empty-state">
+      <div v-if="filteredMonthlyData.length === 0" class="empty-state">
         <div class="empty-icon">📊</div>
         <h3>No data yet</h3>
         <p>Start adding expenses and income to see your reports.</p>
@@ -87,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Bar, Doughnut } from 'vue-chartjs';
 import {
@@ -108,12 +121,35 @@ const reportsStore = useReportsStore();
 const { monthlyData, categoryBreakdown, loading, error, totalIncome, totalExpenses, totalNet } = storeToRefs(reportsStore);
 const { fetchMonthlyComparison } = reportsStore;
 
+const startMonth = ref('');
+const endMonth = ref('');
+const hasDateFilter = computed(() => startMonth.value !== '' || endMonth.value !== '');
+
+const filteredMonthlyData = computed(() => {
+  if (!hasDateFilter.value) return monthlyData.value;
+  const MONTH_MAP: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  return monthlyData.value.filter(m => {
+    const monthNum = MONTH_MAP[m.month] ?? 0;
+    const key = `${m.year}-${String(monthNum + 1).padStart(2, '0')}`;
+    if (startMonth.value && key < startMonth.value) return false;
+    if (endMonth.value && key > endMonth.value) return false;
+    return true;
+  });
+});
+
+const filteredTotalIncome = computed(() => filteredMonthlyData.value.reduce((s, m) => s + m.income, 0));
+const filteredTotalExpenses = computed(() => filteredMonthlyData.value.reduce((s, m) => s + m.expenses, 0));
+const filteredTotalNet = computed(() => filteredMonthlyData.value.reduce((s, m) => s + m.net, 0));
+
+function onDateChange() { /* reactive filtering via computed */ }
+function clearDateFilter() { startMonth.value = ''; endMonth.value = ''; }
+
 const chartData = computed(() => ({
-  labels: monthlyData.value.map((m) => `${m.month} ${m.year}`),
+  labels: filteredMonthlyData.value.map((m) => `${m.month} ${m.year}`),
   datasets: [
     {
       label: 'Income',
-      data: monthlyData.value.map((m) => m.income),
+      data: filteredMonthlyData.value.map((m) => m.income),
       backgroundColor: 'rgba(16, 185, 129, 0.8)',
       borderColor: '#10b981',
       borderWidth: 1,
@@ -121,7 +157,7 @@ const chartData = computed(() => ({
     },
     {
       label: 'Expenses',
-      data: monthlyData.value.map((m) => m.expenses),
+      data: filteredMonthlyData.value.map((m) => m.expenses),
       backgroundColor: 'rgba(239, 68, 68, 0.8)',
       borderColor: '#ef4444',
       borderWidth: 1,
@@ -253,6 +289,57 @@ onMounted(() => {
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin-top: 0.25rem;
+}
+
+.date-range-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-end;
+}
+
+.date-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-input label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.date-input input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.date-input input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.filter-clear {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-clear:hover {
+  background: var(--danger);
+  color: white;
 }
 
 .summary-row {

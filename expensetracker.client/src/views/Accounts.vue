@@ -6,6 +6,7 @@
         <h1>Accounts</h1>
       </div>
       <div class="header-right">
+        <button class="btn-transfer" @click="openTransferModal" v-if="accounts && accounts.length >= 2">Transfer</button>
         <button class="btn-add" @click="openAddModal">+ Add Account</button>
       </div>
     </div>
@@ -218,6 +219,43 @@
         </form>
       </div>
     </div>
+    <!-- Transfer Modal -->
+    <div v-if="showTransferModal" class="modal-overlay" @click="closeTransferModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Transfer Between Accounts</h2>
+          <button class="modal-close" @click="closeTransferModal">&times;</button>
+        </div>
+        <form @submit.prevent="executeTransfer">
+          <div class="form-group">
+            <label>From Account *</label>
+            <select v-model="transferForm.fromId" required>
+              <option value="">Select source</option>
+              <option v-for="a in accounts" :key="a.id" :value="a.id" :disabled="a.id === transferForm.toId">
+                {{ a.icon }} {{ a.name }} ({{ formatLargeAmount(a.balance) }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>To Account *</label>
+            <select v-model="transferForm.toId" required>
+              <option value="">Select destination</option>
+              <option v-for="a in accounts" :key="a.id" :value="a.id" :disabled="a.id === transferForm.fromId">
+                {{ a.icon }} {{ a.name }} ({{ formatLargeAmount(a.balance) }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount *</label>
+            <input v-model.number="transferForm.amount" type="number" step="0.01" min="0.01" required placeholder="0.00" />
+          </div>
+          <div class="form-actions">
+            <button type="button" @click="closeTransferModal" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-add" :disabled="!isTransferValid">Transfer</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -227,6 +265,7 @@ import { storeToRefs } from 'pinia';
 import { useAccountStore } from '@/stores/accountStore';
 import { useToast } from '@/composables/useToast';
 import ConfirmModal from '@/components/ConfirmModal.vue';
+import { accountService } from '@/services/api/accountService';
 import type { Account } from '@/types';
 import { AccountType } from '@/types';
 
@@ -349,6 +388,31 @@ async function saveBalance() {
   }
 }
 
+const showTransferModal = ref(false);
+const transferForm = reactive({ fromId: '', toId: '', amount: 0 });
+const isTransferValid = computed(() => transferForm.fromId && transferForm.toId && transferForm.fromId !== transferForm.toId && transferForm.amount > 0);
+
+function openTransferModal() { showTransferModal.value = true; }
+function closeTransferModal() {
+  showTransferModal.value = false;
+  transferForm.fromId = '';
+  transferForm.toId = '';
+  transferForm.amount = 0;
+}
+
+async function executeTransfer() {
+  if (!isTransferValid.value) return;
+  try {
+    await accountService.transfer(transferForm.fromId, transferForm.toId, transferForm.amount);
+    await fetchAll();
+    showSuccess(`Transferred ₱${transferForm.amount.toLocaleString()}`);
+    closeTransferModal();
+  } catch (err) {
+    showError('Transfer failed');
+    console.error('Transfer failed:', err);
+  }
+}
+
 const deletingId = ref<string | null>(null);
 
 function deleteAccount(id: string) {
@@ -414,6 +478,24 @@ async function confirmDelete() {
 .btn-add:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-transfer {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-transfer:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .summary-row {

@@ -6,6 +6,7 @@
         <h1>Income</h1>
       </div>
       <div class="header-right">
+        <button class="btn-export" @click="exportCSV" v-if="incomes && incomes.length > 0" title="Export CSV">CSV</button>
         <button class="btn-add income" @click="openAddModal">+ Add Income</button>
       </div>
     </div>
@@ -200,6 +201,7 @@ import { useAccountStore } from '@/stores/accountStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import { useToast } from '@/composables/useToast';
 import ConfirmModal from '@/components/ConfirmModal.vue';
+import { downloadCSV } from '@/utils/exportUtils';
 import type { Income } from '@/types';
 import { IncomeSource, CategoryType } from '@/types';
 
@@ -344,6 +346,21 @@ async function saveIncome() {
     showError('Failed to save income');
     console.error('Failed to save income:', err);
   }
+}
+
+function exportCSV() {
+  if (!incomes.value || incomes.value.length === 0) return;
+  const data = incomes.value.map(i => ({
+    Date: i.date.split('T')[0],
+    Description: i.description,
+    Amount: i.amount,
+    Category: i.categoryName,
+    Source: getSourceLabel(i.source),
+    Account: i.accountName || '',
+    Notes: i.notes || '',
+  }));
+  downloadCSV(data, `income-${selectedMonthLabel.value.replace(' ', '-')}.csv`);
+  showSuccess('Income exported');
 }
 
 const deletingId = ref<string | null>(null);
@@ -522,6 +539,24 @@ async function confirmDelete() {
 .btn-add.income {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.btn-export {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-export:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .btn-add:hover {
