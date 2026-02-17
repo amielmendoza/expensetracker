@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/authStore'
+import { inject } from '@vercel/analytics'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -23,6 +24,8 @@ window.addEventListener('unhandledrejection', (event) => {
 
 app.use(pinia)
 app.use(router)
+
+inject()
 
 // Initialize auth before mounting to restore session on page refresh
 const authStore = useAuthStore()

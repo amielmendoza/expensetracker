@@ -170,6 +170,72 @@
       </div>
     </section>
 
+    <!-- Guide -->
+    <section class="guide">
+      <div class="section-inner">
+        <div class="section-header">
+          <h2>How to use ExpenseTracker</h2>
+          <p>A quick walkthrough of everything you can do</p>
+        </div>
+        <div class="guide-steps">
+          <div class="guide-step">
+            <div class="guide-step-number">1</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">💸</div>
+              <h3>Track Your Expenses</h3>
+              <p>Tap "+ Add Expense" to log any spending. Enter the amount, pick a category, choose which account it came from, and add optional notes. For bills that repeat every month like rent or subscriptions, check "Monthly Recurring" to keep them organized separately.</p>
+              <div class="guide-tip">Tip: Use the tabs to quickly switch between recurring and one-time expenses</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-number">2</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">💰</div>
+              <h3>Log Your Income</h3>
+              <p>Head to the Income page to record all money coming in — salary, freelance work, side hustles, refunds, or gifts. Each entry gets a category and account, so you always know where your money is coming from and where it lands.</p>
+              <div class="guide-tip">Tip: Use the month selector to view income history for any past month</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-number">3</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">🏦</div>
+              <h3>Manage Your Accounts</h3>
+              <p>Add all your financial accounts — bank accounts (BPI, MetroBank), e-wallets (GCash), and credit cards. Each account tracks its own balance that updates automatically when you add expenses or income. You can also transfer money between accounts.</p>
+              <div class="guide-tip">Tip: Credit card balances work in reverse — expenses increase the balance (debt), payments decrease it</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-number">4</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">📊</div>
+              <h3>View Reports & Analytics</h3>
+              <p>The Reports page shows your income vs. expenses as a bar chart over time. Toggle between 3-month, 6-month, or 12-month views to spot spending trends. A category breakdown chart shows exactly where your money goes each month.</p>
+              <div class="guide-tip">Tip: Compare months side by side to see if your spending is going up or down</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-number">5</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">🎯</div>
+              <h3>Set Savings Goals</h3>
+              <p>Want to save for something? Create a savings goal with a target amount and deadline. Track your progress with a visual progress bar. Update your saved amount anytime to watch it grow toward your target.</p>
+              <div class="guide-tip">Tip: Set realistic deadlines and break big goals into smaller milestones</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-number">6</div>
+            <div class="guide-step-content">
+              <div class="guide-step-icon">🏷️</div>
+              <h3>Organize with Categories</h3>
+              <p>The app comes with default categories, but you can create your own. Head to Categories, tap "+ Add", pick an emoji icon from the visual picker, choose a color, and you're set. Categories help you see exactly where your money goes in reports.</p>
+              <div class="guide-tip">Tip: Create specific categories like "Coffee" or "Grab" for spending you want to track closely</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="cta">
       <div class="cta-inner">
@@ -728,6 +794,82 @@
   flex-shrink: 0;
 }
 
+/* ── Guide ── */
+.guide {
+  padding: 6rem 2rem;
+}
+
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.guide-step {
+  display: flex;
+  gap: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.guide-step:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.guide-step-number {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.guide-step-content {
+  flex: 1;
+}
+
+.guide-step-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.guide-step-content h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+}
+
+.guide-step-content p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+}
+
+.guide-tip {
+  font-size: 0.8rem;
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+  border-left: 3px solid var(--primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 8px 8px 0;
+  font-weight: 500;
+}
+
 /* ── CTA ── */
 .cta {
   padding: 6rem 2rem;
@@ -870,8 +1012,14 @@
 
   .features,
   .how-it-works,
+  .guide,
   .cta {
     padding: 4rem 1.25rem;
+  }
+
+  .guide-step {
+    padding: 1.5rem;
+    gap: 1rem;
   }
 
   .section-header h2 {
