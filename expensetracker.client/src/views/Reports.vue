@@ -114,6 +114,7 @@ import {
   Legend,
 } from 'chart.js';
 import { useReportsStore } from '@/stores/reportsStore';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -246,16 +247,6 @@ const doughnutOptions = {
   },
 };
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toFixed(0)}`;
-};
 
 async function retryLoad() {
   await fetchMonthlyComparison();

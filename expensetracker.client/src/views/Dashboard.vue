@@ -222,21 +222,12 @@ import { onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { formatDate } from '@/utils/dateUtils';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 const dashboardStore = useDashboardStore();
 const { summary, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(dashboardStore);
 const { fetchSummary, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = dashboardStore;
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toFixed(0)}`;
-};
 
 const calculateIncomeChange = computed(() => {
   if (!summary.value || summary.value.prevMonthIncome === 0) return null;

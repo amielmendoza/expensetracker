@@ -204,6 +204,7 @@ import ConfirmModal from '@/components/ConfirmModal.vue';
 import { downloadCSV } from '@/utils/exportUtils';
 import type { Income } from '@/types';
 import { IncomeSource, CategoryType } from '@/types';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 const incomeStore = useIncomeStore();
 const categoryStore = useCategoryStore();
@@ -261,16 +262,6 @@ const incomeForm = reactive({
   notes: '',
 });
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
 
 function getSourceLabel(source: IncomeSource): string {
   const labels = {

@@ -182,6 +182,7 @@ import { useSavingsGoalStore } from '@/stores/savingsGoalStore';
 import { formatDate, getTodayDateString } from '@/utils/dateUtils';
 import type { SavingsGoal } from '@/types';
 import { BudgetPeriod } from '@/types';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 const savingsGoalStore = useSavingsGoalStore();
 
@@ -200,16 +201,6 @@ const goalForm = reactive({
   isActive: true,
 });
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(2)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-};
 
 function getPeriodLabel(period: BudgetPeriod): string {
   const labels = {

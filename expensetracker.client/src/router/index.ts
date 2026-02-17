@@ -8,11 +8,18 @@ import Reports from '@/views/Reports.vue';
 import Categories from '@/views/Categories.vue';
 import SavingsGoals from '@/views/SavingsGoals.vue';
 import Login from '@/views/Login.vue';
+import Landing from '@/views/Landing.vue';
 import { useAuthStore } from '@/stores/authStore';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/',
+      name: 'landing',
+      component: Landing,
+      meta: { public: true },
+    },
     {
       path: '/login',
       name: 'login',
@@ -20,7 +27,7 @@ const router = createRouter({
       meta: { public: true },
     },
     {
-      path: '/',
+      path: '/dashboard',
       name: 'dashboard',
       component: Dashboard,
     },
@@ -73,7 +80,7 @@ router.beforeEach(async (to) => {
     return { name: 'login' };
   }
 
-  if (to.name === 'login' && authStore.isAuthenticated) {
+  if ((to.name === 'login') && authStore.isAuthenticated) {
     return { name: 'dashboard' };
   }
 });

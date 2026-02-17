@@ -1,5 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Workaround: Supabase Auth internally calls navigator.permissions.query() which
+// throws "Illegal invocation" in some browsers/contexts. Replace with safe stub.
+if (typeof navigator !== 'undefined' && navigator.permissions) {
+  const safeQuery = async () => ({ state: 'prompt' as PermissionState, onchange: null });
+  try {
+    Object.defineProperty(navigator.permissions, 'query', {
+      value: safeQuery,
+      writable: true,
+      configurable: true,
+    });
+  } catch {
+    (navigator as any).permissions = { query: safeQuery };
+  }
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 

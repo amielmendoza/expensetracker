@@ -205,7 +205,7 @@
             <label>Notes</label>
             <textarea v-model="expenseForm.notes" rows="2" placeholder="Optional notes..."></textarea>
           </div>
-          <div class="form-group">
+          <div class="form-group checkbox-group">
             <label class="checkbox-label">
               <input type="checkbox" v-model="expenseForm.isMonthlyRecurring" />
               <span class="checkbox-text">Monthly Recurring</span>
@@ -233,6 +233,7 @@ import ConfirmModal from '@/components/ConfirmModal.vue';
 import { downloadCSV } from '@/utils/exportUtils';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
@@ -305,16 +306,6 @@ const expenseForm = reactive({
   isMonthlyRecurring: false,
 });
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(1)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
 
 async function retryLoad() {
   try {
@@ -997,23 +988,37 @@ form {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+.checkbox-group {
+  margin-bottom: 0.5rem;
+}
+
 .checkbox-label {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
+  margin-bottom: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 0.95rem !important;
+  color: var(--text-primary) !important;
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  min-width: 18px;
   accent-color: var(--primary);
   cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
 }
 
 .checkbox-text {
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   text-transform: none;
   letter-spacing: normal;

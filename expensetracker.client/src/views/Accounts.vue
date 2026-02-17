@@ -268,6 +268,7 @@ import ConfirmModal from '@/components/ConfirmModal.vue';
 import { accountService } from '@/services/api/accountService';
 import type { Account } from '@/types';
 import { AccountType } from '@/types';
+import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 
 const accountStore = useAccountStore();
 const { showSuccess, showError } = useToast();
@@ -294,16 +295,6 @@ const accountForm = reactive({
   balance: 0,
 });
 
-const formatLargeAmount = (amount: number): string => {
-  const absAmount = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (absAmount >= 1000000) {
-    return `${sign}₱${(absAmount / 1000000).toFixed(2)}M`;
-  } else if (absAmount >= 1000) {
-    return `${sign}₱${(absAmount / 1000).toFixed(1)}K`;
-  }
-  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
 
 async function retryLoad() {
   try {

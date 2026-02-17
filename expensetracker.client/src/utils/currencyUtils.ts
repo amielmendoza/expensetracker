@@ -14,3 +14,9 @@ export function formatNumber(amount: number): string {
   }).format(amount);
 }
 
+export function formatAmount(amount: number): string {
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}₱${absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+

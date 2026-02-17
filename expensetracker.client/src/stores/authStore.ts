@@ -8,7 +8,7 @@ import { useCategoryStore } from '@/stores/categoryStore';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useReportsStore } from '@/stores/reportsStore';
 import { useSavingsGoalStore } from '@/stores/savingsGoalStore';
-import type { User, Session } from '@supabase/supabase-js';
+import type { User, Session, Provider } from '@supabase/supabase-js';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -69,6 +69,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function signInWithOAuth(provider: Provider) {
+    error.value = null;
+    const { error: authError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + '/dashboard' },
+    });
+    if (authError) {
+      error.value = authError.message;
+      throw authError;
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     session.value = null;
@@ -96,6 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialize,
     signUp,
     signIn,
+    signInWithOAuth,
     signOut,
   };
 });
