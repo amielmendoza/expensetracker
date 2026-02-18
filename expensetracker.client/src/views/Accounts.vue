@@ -649,8 +649,8 @@ async function confirmDelete() {
 }
 
 .btn-icon {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   border-radius: 6px;

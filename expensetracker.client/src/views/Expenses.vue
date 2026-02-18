@@ -1054,6 +1054,18 @@ form {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .filter-bar {
+    flex-wrap: wrap;
+  }
+
+  .filter-search {
+    flex: 1 1 100%;
+  }
+
+  .filter-category {
+    flex: 1;
+  }
+
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -1082,6 +1094,15 @@ form {
 
   .summary-stat {
     min-width: auto;
+  }
+
+  .expense-tabs {
+    gap: 0.25rem;
+  }
+
+  .tab-btn {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.5rem;
   }
 }
 </style>

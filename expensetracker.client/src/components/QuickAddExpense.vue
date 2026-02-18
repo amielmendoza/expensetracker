@@ -204,13 +204,13 @@ async function saveExpense() {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
   border: none;
-  font-size: 2rem;
+  font-size: 1.5rem;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
   z-index: 999;
@@ -454,6 +454,72 @@ async function saveExpense() {
 .btn-secondary:hover {
   background: var(--bg-secondary);
   border-color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+  .fab {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+    margin-top: auto;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.25rem 1rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .quick-form {
+    padding: 1.25rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .amount-input {
+    font-size: 1.35rem;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .category-btn {
+    padding: 0.75rem 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .category-icon {
+    font-size: 1.5rem;
+  }
+
+  .category-name {
+    font-size: 0.7rem;
+  }
+
+  .form-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+  }
 }
 </style>
 

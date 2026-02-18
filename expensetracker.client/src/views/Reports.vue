@@ -515,5 +515,33 @@ onMounted(() => {
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
   }
+
+  .date-range-bar {
+    flex-wrap: wrap;
+  }
+
+  .date-input {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .header-left h1 {
+    font-size: 1.5rem;
+  }
+
+  .date-range-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .date-input {
+    width: 100%;
+  }
 }
 </style>

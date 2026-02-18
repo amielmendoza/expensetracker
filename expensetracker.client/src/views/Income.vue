@@ -911,6 +911,18 @@ form {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .filter-bar {
+    flex-wrap: wrap;
+  }
+
+  .filter-search {
+    flex: 1 1 100%;
+  }
+
+  .filter-category {
+    flex: 1;
+  }
+
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -935,6 +947,10 @@ form {
 
   .transaction-name {
     max-width: 150px;
+  }
+
+  .summary-stat {
+    min-width: auto;
   }
 }
 </style>

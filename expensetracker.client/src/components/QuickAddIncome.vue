@@ -346,4 +346,52 @@ async function saveIncome() {
 .btn-secondary:hover {
   background: var(--bg-secondary);
 }
+
+@media (max-width: 600px) {
+  .fab-income {
+    bottom: 4.5rem;
+    right: 1.25rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+    margin-top: auto;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.25rem 0.875rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .quick-form {
+    padding: 1.25rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .amount-input {
+    font-size: 1.35rem;
+  }
+
+  .form-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+  }
+}
 </style>

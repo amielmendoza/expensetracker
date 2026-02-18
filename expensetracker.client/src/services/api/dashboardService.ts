@@ -151,7 +151,7 @@ export const dashboardService = {
     const [prevExpensesResult, prevIncomesResult] = await Promise.all([
       supabase
         .from('Expenses')
-        .select('amount, category_id, Categories(name, icon, color)')
+        .select('*, Categories(name, icon, color)')
         .gte('date', prevMonthStart)
         .lte('date', prevMonthEnd),
       supabase
@@ -190,6 +190,51 @@ export const dashboardService = {
         percentage: prevMonthTotal > 0 ? (cat.totalAmount / prevMonthTotal) * 100 : 0,
       }))
       .sort((a, b) => b.totalAmount - a.totalAmount);
+
+    // Detect overdue recurring expenses (only for current month view)
+    let overdueRecurring: Expense[] = [];
+    if (isCurrentMonth) {
+      const prevRecurring = prevExpensesResult.data?.filter((e: any) => e.is_monthly_recurring) || [];
+      const currentRecurring = monthExpenses?.filter((e: any) => e.is_monthly_recurring) || [];
+
+      // Build a set of current month's recurring expense keys (description + category_id)
+      const currentKeys = new Set(
+        currentRecurring.map((e: any) => `${e.description.toLowerCase().trim()}|${e.category_id}`)
+      );
+
+      // Find prev month recurring expenses not yet recorded this month
+      const overdueRows = prevRecurring.filter((e: any) =>
+        !currentKeys.has(`${e.description.toLowerCase().trim()}|${e.category_id}`)
+      );
+
+      // Deduplicate by description + category_id (keep first occurrence)
+      const seen = new Set<string>();
+      const uniqueOverdue = overdueRows.filter((e: any) => {
+        const key = `${e.description.toLowerCase().trim()}|${e.category_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      overdueRecurring = uniqueOverdue.map((row: any) => ({
+        id: row.id,
+        amount: row.amount,
+        description: row.description,
+        categoryId: row.category_id,
+        categoryName: row.Categories?.name || '',
+        categoryIcon: row.Categories?.icon || '',
+        categoryColor: row.Categories?.color || '',
+        date: row.date,
+        paymentMethod: row.payment_method,
+        accountId: row.account_id || undefined,
+        accountName: undefined,
+        tags: row.tags || [],
+        notes: row.notes || undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        isMonthlyRecurring: true,
+      }));
+    }
 
     // Fetch today's income (only for current month)
     let todayIncome = 0;
@@ -277,6 +322,7 @@ export const dashboardService = {
       prevMonthTotal,
       prevMonthIncome,
       prevMonthCategories,
+      overdueRecurring,
     };
   },
 };

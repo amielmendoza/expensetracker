@@ -206,6 +206,7 @@ export interface DashboardSummary {
   prevMonthTotal: number;
   prevMonthIncome: number;
   prevMonthCategories: CategorySpending[];
+  overdueRecurring: Expense[];
 }
 
 export interface CategorySpending {

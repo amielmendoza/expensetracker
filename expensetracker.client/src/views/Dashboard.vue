@@ -18,6 +18,34 @@
       <button v-if="!isCurrentMonth" class="today-btn" @click="goToCurrentMonth">Today</button>
     </div>
 
+    <!-- Overdue Recurring Alert -->
+    <div v-if="!loading && summary && summary.overdueRecurring.length > 0 && !dismissedOverdue" class="overdue-alert">
+      <div class="overdue-header" @click="overdueExpanded = !overdueExpanded">
+        <div class="overdue-title">
+          <span class="overdue-icon">&#9888;&#65039;</span>
+          <span>{{ summary.overdueRecurring.length }} recurring expense{{ summary.overdueRecurring.length > 1 ? 's' : '' }} not yet recorded</span>
+        </div>
+        <div class="overdue-header-actions">
+          <span class="overdue-chevron" :class="{ expanded: overdueExpanded }">&#9660;</span>
+          <button class="overdue-dismiss" @click.stop="dismissedOverdue = true">&times;</button>
+        </div>
+      </div>
+      <div class="overdue-body" :class="{ expanded: overdueExpanded }">
+        <div class="overdue-list">
+          <div v-for="expense in summary.overdueRecurring" :key="expense.id" class="overdue-item">
+            <div class="overdue-item-icon" :style="{ backgroundColor: expense.categoryColor }">{{ expense.categoryIcon }}</div>
+            <div class="overdue-item-info">
+              <span class="overdue-item-name">{{ expense.description }}</span>
+              <span class="overdue-item-category">{{ expense.categoryName }}</span>
+            </div>
+            <div class="overdue-item-amount">{{ formatLargeAmount(expense.amount) }}</div>
+          </div>
+        </div>
+        <div class="overdue-tip">Tip: Use the same description when recording recurring expenses for accurate tracking.</div>
+        <router-link to="/expenses" class="overdue-action">Go to Expenses &rarr;</router-link>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading">
       <div class="loading-spinner"></div>
       <p>Loading dashboard...</p>
@@ -218,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { formatDate } from '@/utils/dateUtils';
@@ -227,6 +255,9 @@ import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
 const dashboardStore = useDashboardStore();
 const { summary, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(dashboardStore);
 const { fetchSummary, goToPreviousMonth, goToNextMonth, goToCurrentMonth } = dashboardStore;
+
+const dismissedOverdue = ref(false);
+const overdueExpanded = ref(false);
 
 
 const calculateIncomeChange = computed(() => {
@@ -277,6 +308,159 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Overdue Recurring Alert */
+.overdue-alert {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.overdue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.overdue-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+[data-theme="dark"] .overdue-title {
+  color: #fbbf24;
+}
+
+.overdue-icon {
+  font-size: 1.1rem;
+}
+
+.overdue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overdue-chevron {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  transition: transform 0.25s ease;
+  display: inline-block;
+}
+
+.overdue-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.overdue-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.overdue-dismiss:hover {
+  color: var(--text-primary);
+}
+
+.overdue-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding-top 0.3s ease;
+  padding-top: 0;
+}
+
+.overdue-body.expanded {
+  max-height: 350px;
+  padding-top: 0.75rem;
+}
+
+.overdue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.overdue-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.overdue-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.overdue-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.overdue-item-name {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.overdue-item-category {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.overdue-item-amount {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #b45309;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .overdue-item-amount {
+  color: #fbbf24;
+}
+
+.overdue-tip {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
+
+.overdue-action {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.overdue-action:hover {
+  text-decoration: underline;
+}
+
 .dashboard {
   padding: 1.5rem;
   max-width: 1400px;
