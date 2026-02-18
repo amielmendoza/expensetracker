@@ -193,6 +193,9 @@
 
         <!-- Right Column -->
         <div class="right-column">
+          <!-- AI Insights -->
+          <SpendingAlerts />
+
           <!-- Top Spending Categories -->
           <div class="card">
             <div class="card-title">
@@ -242,6 +245,9 @@
         </div>
       </div>
     </div>
+
+    <!-- AI Chat -->
+    <AiChatPanel />
   </div>
 </template>
 
@@ -251,6 +257,8 @@ import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { formatDate } from '@/utils/dateUtils';
 import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
+import SpendingAlerts from '@/components/SpendingAlerts.vue';
+import AiChatPanel from '@/components/AiChatPanel.vue';
 
 const dashboardStore = useDashboardStore();
 const { summary, loading, error, selectedMonthLabel, isCurrentMonth } = storeToRefs(dashboardStore);

@@ -151,7 +151,44 @@
           <h2>{{ editingExpense ? 'Edit Expense' : 'Add Expense' }}</h2>
           <button class="modal-close" @click="closeModal">&times;</button>
         </div>
-        <form @submit.prevent="saveExpense">
+        <div v-if="!editingExpense" class="modal-tabs">
+          <button :class="['modal-tab', { active: modalMode === 'manual' }]" @click="modalMode = 'manual'">Manual</button>
+          <button :class="['modal-tab', { active: modalMode === 'receipt' }]" @click="modalMode = 'receipt'">Scan Receipt</button>
+        </div>
+        <!-- Receipt Scanner -->
+        <div v-if="modalMode === 'receipt' && !editingExpense" class="receipt-section">
+          <div v-if="!receiptPreview" class="receipt-dropzone" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleReceiptDrop">
+            <input ref="receiptFileInput" type="file" accept="image/*" capture="environment" class="hidden-input" @change="handleReceiptSelect" />
+            <div class="dropzone-content">
+              <span class="dropzone-icon">&#128247;</span>
+              <span class="dropzone-text">Drop receipt or tap to upload</span>
+            </div>
+          </div>
+          <div v-else class="receipt-preview-area">
+            <img :src="receiptPreview" class="receipt-thumb" alt="Receipt" />
+            <div v-if="scanning" class="receipt-scanning">
+              <div class="loading-spinner small"></div>
+              <span>Scanning receipt...</span>
+            </div>
+            <div v-else-if="receiptResult" class="receipt-result">
+              <div class="receipt-info">
+                <strong>{{ receiptResult.merchant }}</strong>
+                <span class="receipt-total">Total: {{ formatLargeAmount(receiptResult.total) }}</span>
+                <span v-if="receiptResult.date" class="receipt-date">Date: {{ receiptResult.date }}</span>
+                <span v-if="receiptResult.suggestedCategory" class="receipt-category">Category: {{ receiptResult.suggestedCategory }}</span>
+              </div>
+              <div class="receipt-actions">
+                <button type="button" class="btn-add" @click="applyReceipt">Apply to Form</button>
+                <button type="button" class="btn-secondary" @click="clearReceipt">Clear</button>
+              </div>
+            </div>
+            <div v-else-if="receiptError" class="receipt-error">
+              {{ receiptError }}
+              <button type="button" class="btn-secondary" @click="clearReceipt">Try Again</button>
+            </div>
+          </div>
+        </div>
+        <form v-show="modalMode === 'manual' || editingExpense" @submit.prevent="saveExpense">
           <div class="form-row">
             <div class="form-group">
               <label>Amount *</label>
@@ -171,7 +208,22 @@
           </div>
           <div class="form-group">
             <label>Description *</label>
-            <input v-model="expenseForm.description" placeholder="What did you spend on?" required />
+            <input
+              v-model="expenseForm.description"
+              placeholder="What did you spend on?"
+              required
+              @input="onDescriptionInput"
+            />
+            <div v-if="aiLoading" class="ai-suggestion-loading">Analyzing...</div>
+            <div
+              v-else-if="suggestion && !expenseForm.categoryId"
+              class="ai-suggestion"
+              @click="applySuggestion"
+            >
+              <span class="ai-badge">AI</span>
+              Suggested: {{ suggestion.categoryName }}
+              <span class="ai-apply">Apply</span>
+            </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -234,6 +286,11 @@ import { downloadCSV } from '@/utils/exportUtils';
 import type { Expense } from '@/types';
 import { PaymentMethod, CategoryType } from '@/types';
 import { formatAmount as formatLargeAmount } from '@/utils/currencyUtils';
+import { useSmartEntry } from '@/composables/useSmartEntry';
+import { useReceiptScanner } from '@/composables/useReceiptScanner';
+
+const { suggestion, loading: aiLoading, suggestCategory, clearSuggestion } = useSmartEntry();
+const { scanning, result: receiptResult, error: receiptError, preview: receiptPreview, scanReceipt, clearResult: clearReceipt } = useReceiptScanner();
 
 const expenseStore = useExpenseStore();
 const categoryStore = useCategoryStore();
@@ -332,14 +389,56 @@ function editExpense(expense: Expense) {
   expenseForm.isMonthlyRecurring = expense.isMonthlyRecurring;
 }
 
+const modalMode = ref<'manual' | 'receipt'>('manual');
+const receiptFileInput = ref<HTMLInputElement | null>(null);
+
 function openAddModal() {
   showAddModal.value = true;
+  modalMode.value = 'manual';
 }
 
 function closeModal() {
   showAddModal.value = false;
   editingExpense.value = null;
+  modalMode.value = 'manual';
+  clearSuggestion();
+  clearReceipt();
   resetForm();
+}
+
+function onDescriptionInput() {
+  suggestCategory(expenseForm.description);
+}
+
+function applySuggestion() {
+  if (suggestion.value) {
+    expenseForm.categoryId = suggestion.value.categoryId;
+    clearSuggestion();
+  }
+}
+
+function triggerFileInput() {
+  receiptFileInput.value?.click();
+}
+
+function handleReceiptSelect(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) scanReceipt(file);
+}
+
+function handleReceiptDrop(e: DragEvent) {
+  const file = e.dataTransfer?.files?.[0];
+  if (file) scanReceipt(file);
+}
+
+function applyReceipt() {
+  if (!receiptResult.value) return;
+  const r = receiptResult.value;
+  expenseForm.amount = r.total;
+  expenseForm.description = r.merchant;
+  if (r.date) expenseForm.date = r.date;
+  if (r.suggestedCategoryId) expenseForm.categoryId = r.suggestedCategoryId;
+  modalMode.value = 'manual';
 }
 
 function resetForm() {
@@ -1104,5 +1203,183 @@ form {
     font-size: 0.75rem;
     padding: 0.5rem 0.5rem;
   }
+}
+
+/* AI Suggestion */
+.ai-suggestion-loading {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+  font-style: italic;
+}
+
+.ai-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ai-suggestion:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.ai-badge {
+  background: var(--primary);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.ai-apply {
+  color: var(--primary);
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+/* Modal Tabs */
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+}
+
+.modal-tab {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.modal-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.modal-tab:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+/* Receipt Scanner */
+.receipt-section {
+  padding: 1.5rem;
+}
+
+.receipt-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.receipt-dropzone:hover {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.hidden-input {
+  display: none;
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dropzone-icon {
+  font-size: 2.5rem;
+}
+
+.dropzone-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.receipt-preview-area {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.receipt-thumb {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.receipt-scanning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.loading-spinner.small {
+  width: 18px;
+  height: 18px;
+}
+
+.receipt-result {
+  width: 100%;
+  text-align: left;
+}
+
+.receipt-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.receipt-total {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.receipt-date,
+.receipt-category {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.receipt-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.receipt-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
 }
 </style>
